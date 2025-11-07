@@ -116,7 +116,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define OLED_ALL_BLOCKS_MASK (((((OLED_BLOCK_TYPE)1 << (OLED_BLOCK_COUNT - 1)) - 1) << 1) | 1)
 
-#define OLED_IC_HAS_HORIZONTAL_MODE (OLED_IC == OLED_IC_SSD1306)
+#define OLED_IC_HAS_HORIZONTAL_MODE (OLED_IC == OLED_IC_SSD1306 || OLED_IC == OLED_IC_SSD1312)
 #define OLED_IC_COM_PINS_ARE_COLUMNS (OLED_IC == OLED_IC_SH1107)
 
 #ifndef OLED_COM_PIN_COUNT
@@ -126,6 +126,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #        define OLED_COM_PIN_COUNT 64
 #    elif OLED_IC == OLED_IC_SH1107
 #        define OLED_COM_PIN_COUNT 128
+#    elif OLED_IC == OLED_IC_SSD1312
+#        define OLED_COM_PIN_COUNT 64
 #    else
 #        error Invalid OLED_IC value
 #    endif
@@ -133,6 +135,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef OLED_COM_PIN_OFFSET
 #    define OLED_COM_PIN_OFFSET 0
+#endif
+
+#ifndef OLED_CHARGE_PUMP_VALUE
+#  if OLED_IC == OLED_IC_SSD1306
+#    define OLED_CHARGE_PUMP_VALUE 0x14 // enable
+#  elif OLED_IC == OLED_IC_SSD1312
+#    define OLED_CHARGE_PUMP_VALUE 0x12 // default to 7.5 V, override if needed (0x52 = 8.0 V, 0x72 = 9.0 V, 0x92 = 10.0 V)
+#  else
+#    define OLED_CHARGE_PUMP_VALUE 0x14
+#  endif
+#endif
+
+// SEG (horizontal mirror): A0 = normal, A1 = mirrored
+#ifdef OLED_FLIP_SEGMENT
+#  define OLED_SEG_NORMAL SEGMENT_REMAP     /* 0xA0 */
+#  define OLED_SEG_180    SEGMENT_REMAP_INV /* 0xA1 */
+#else
+#  define OLED_SEG_NORMAL SEGMENT_REMAP_INV /* 0xA1 */
+#  define OLED_SEG_180    SEGMENT_REMAP     /* 0xA0 */
+#endif
+
+// COM (vertical flip): C0 = normal, C8 = reversed
+#ifdef OLED_FLIP_COM
+#  define OLED_COM_NORMAL COM_SCAN_INC      /* 0xC0 */
+#  define OLED_COM_180    COM_SCAN_DEC      /* 0xC8 */
+#else
+#  define OLED_COM_NORMAL COM_SCAN_DEC      /* 0xC8 */
+#  define OLED_COM_180    COM_SCAN_INC      /* 0xC0 */
 #endif
 
 // i2c defines
@@ -318,7 +348,7 @@ bool oled_init(oled_rotation_t rotation) {
         DISPLAY_START_LINE | 0x00,
 #endif
         CHARGE_PUMP,
-        0x14,
+        OLED_CHARGE_PUMP_VALUE,
 #if OLED_IC_HAS_HORIZONTAL_MODE
         // MEMORY_MODE is unsupported on SH1106 (Page Addressing only)
         MEMORY_MODE,
@@ -335,7 +365,7 @@ bool oled_init(oled_rotation_t rotation) {
 
     if (!HAS_FLAGS(oled_rotation, OLED_ROTATION_180)) {
         static const uint8_t PROGMEM display_normal[] = {
-            I2C_CMD, SEGMENT_REMAP_INV, COM_SCAN_DEC, DISPLAY_OFFSET, OLED_COM_PIN_OFFSET,
+            I2C_CMD, OLED_SEG_NORMAL, OLED_COM_NORMAL, DISPLAY_OFFSET, OLED_COM_PIN_OFFSET,
         };
         if (!oled_send_cmd_P(display_normal, ARRAY_SIZE(display_normal))) {
             print("oled_init cmd normal rotation failed\n");
@@ -343,7 +373,7 @@ bool oled_init(oled_rotation_t rotation) {
         }
     } else {
         static const uint8_t PROGMEM display_flipped[] = {
-            I2C_CMD, SEGMENT_REMAP, COM_SCAN_INC, DISPLAY_OFFSET, (OLED_COM_PIN_COUNT - OLED_COM_PIN_OFFSET) % OLED_COM_PIN_COUNT,
+            I2C_CMD, OLED_SEG_180, OLED_COM_180, DISPLAY_OFFSET, (OLED_COM_PIN_COUNT - OLED_COM_PIN_OFFSET) % OLED_COM_PIN_COUNT,
         };
         if (!oled_send_cmd_P(display_flipped, ARRAY_SIZE(display_flipped))) {
             print("display_flipped failed\n");
@@ -351,7 +381,15 @@ bool oled_init(oled_rotation_t rotation) {
         }
     }
 
-    static const uint8_t PROGMEM display_setup2[] = {I2C_CMD, COM_PINS, OLED_COM_PINS, CONTRAST, OLED_BRIGHTNESS, PRE_CHARGE_PERIOD, OLED_PRE_CHARGE_PERIOD, VCOM_DETECT, OLED_VCOM_DETECT, DISPLAY_ALL_ON_RESUME, NORMAL_DISPLAY, DEACTIVATE_SCROLL, DISPLAY_ON};
+    static const uint8_t PROGMEM display_setup2[] = {
+        I2C_CMD,
+        COM_PINS, OLED_COM_PINS,
+        CONTRAST, OLED_BRIGHTNESS,
+        PRE_CHARGE_PERIOD, OLED_PRE_CHARGE_PERIOD,
+        VCOM_DETECT, OLED_VCOM_DETECT,
+        DISPLAY_ALL_ON_RESUME, NORMAL_DISPLAY,
+        DEACTIVATE_SCROLL, DISPLAY_ON
+    };
     if (!oled_send_cmd_P(display_setup2, ARRAY_SIZE(display_setup2))) {
         print("display_setup2 failed\n");
         return false;
