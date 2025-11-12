@@ -206,6 +206,19 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
 
 #include "transactions.h"
 
+static const uint8_t OLED_WIDTH = OLED_DISPLAY_HEIGHT;
+static const uint16_t SPLASH_DURATION_MS = 2500;
+
+static const char PROGMEM QMK_LOGO_1[] = {
+    0x81, 0x82, 0x83, 0x84, 0x00
+};
+static const char PROGMEM QMK_LOGO_2[] = {
+    0xA1, 0xA2, 0xA3, 0xA4, 0x00
+};
+static const char PROGMEM QMK_LOGO_3[] = {
+    0xC1, 0xC2, 0xC3, 0xC4, 0x00
+};
+
 typedef struct {
     uint32_t user;
 } ontime_m2s_t;
@@ -219,14 +232,11 @@ typedef struct {
     uint32_t right;
 } presses_m2s_t;
 
-static const uint8_t OLED_WIDTH = OLED_DISPLAY_HEIGHT;
-static const uint16_t SPLASH_DURATION_MS = 2500;
-
 static bool g_oled_init_done = false;
 static uint8_t g_oled_max_char;
 static uint8_t g_oled_max_line;
-static bool splash_active = true;
-static uint32_t splash_start_ms = 0;
+static bool g_splash_active = true;
+static uint32_t g_splash_start_ms = 0;
 static uint32_t g_user_ontime = 0;
 static uint16_t g_last_keycode = KC_NO;
 static uint32_t g_press_left = 0;
@@ -242,21 +252,11 @@ static inline pin_t get_charge_pump_enable_pin(void) {
     }
 }
 
-void oled_print_right_aligned(const char *text, const uint8_t width) {
-    uint8_t len = strlen(text);
-    uint8_t pad = (len < width) ? (width - len) : 0;
-    for (uint8_t i = 0; i < pad; i++) {
-        oled_write_P(PSTR(" "), false);
-    }
-    oled_write(text, false);
-}
-
 void oled_blit_16x16_P(const char *icon, uint8_t x, uint8_t page) {
     for (uint8_t i = 0; i < 16; i++) {
         char top = pgm_read_byte(&icon[i]);         // column i, top 8 pixels
         char bot = pgm_read_byte(&icon[16 + i]);    // column i, bottom 8 pixels
 
-        // write into linear framebuffer at (page, x+i) and (page+1, x+i)
         oled_write_raw_byte(top, page       * OLED_WIDTH + x + i);
         oled_write_raw_byte(bot, (page + 1) * OLED_WIDTH + x + i);
     }
@@ -268,7 +268,6 @@ void oled_blit_24x24_P(const char *icon, uint8_t x, uint8_t page) {
         char mid = pgm_read_byte(&icon[24 + i]);    // column i, middle 8 pixels
         char bot = pgm_read_byte(&icon[48 + i]);    // column i, bottom 8 pixels
 
-        // write into linear framebuffer
         oled_write_raw_byte(top, page       * OLED_WIDTH + x + i);
         oled_write_raw_byte(mid, (page + 1) * OLED_WIDTH + x + i);
         oled_write_raw_byte(bot, (page + 2) * OLED_WIDTH + x + i);
@@ -289,6 +288,91 @@ uint16_t get_current_dwpm(void) {
     const uint8_t wpm = get_current_wpm();
     uint16_t dwpm = (uint16_t)wpm * 10u;
     return dwpm;
+}
+
+uint8_t round_percentage(float x) {
+    float f = x + 0.5f;
+    uint8_t r = (uint8_t)f;
+    if ((f - (float)r) == 0.0f && (r & 1)) {
+        r--; // round half to even
+    }
+    return r;
+}
+
+void oled_print_right_aligned(const char *text, const uint8_t width) {
+    uint8_t len = strlen(text);
+    uint8_t pad = (len < width) ? (width - len) : 0;
+    for (uint8_t i = 0; i < pad; i++) {
+        oled_write_P(PSTR(" "), false);
+    }
+    oled_write(text, false);
+}
+
+void print_current_layer(uint8_t row) {
+    char layer_str[8];
+    switch (get_highest_layer(layer_state)) {
+        case _BASE:
+            strcpy(layer_str, "Base");
+            break;
+        case _LOWER:
+            strcpy(layer_str, "Lower");
+            break;
+        case _RAISE:
+            strcpy(layer_str, "Raise");
+            break;
+        case _ADJUST:
+            strcpy(layer_str, "Adjust");
+            break;
+        default:
+            // TODO: consider remove snprintf
+            snprintf(layer_str, sizeof(layer_str), "%d", get_highest_layer(layer_state));
+    }
+
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(layer_str, g_oled_max_char);
+}
+
+void print_uptime(uint8_t row) {
+    uint32_t time_ms = timer_read32();
+    uint32_t total_min = time_ms / 60000u;
+    uint32_t hours = total_min / 60u;
+    uint32_t minutes = total_min % 60u;
+    if (hours > 999u) {
+        hours = 999u;
+        minutes = 59u;
+    }
+
+    // TODO: consider remove snprintf
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%3luh%02lum", hours, minutes);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void print_wpm(uint8_t row) {
+    uint16_t wpm = get_current_dwpm();
+    uint16_t wpm_int = wpm / 10u;
+    uint16_t wpm_frac = wpm % 10u;
+
+    // TODO: consider remove snprintf
+    char buf[11];
+    snprintf(buf, sizeof(buf), "%3u.%1u WPM", wpm_int, wpm_frac);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void print_balance(uint8_t row, uint8_t pct) {
+    // TODO: consider remove snprintf
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%3u %%", pct);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void render_splash(void) {
+    oled_clear();
+    oled_set_cursor(0, 0);
+    oled_write_raw_P(STARTUP_BITMAP, sizeof(STARTUP_BITMAP));
 }
 
 static void user_sync_ontime_slave(uint8_t in_len, const void* in_data,
@@ -313,57 +397,19 @@ static void user_sync_presses_slave(uint8_t in_len, const void* in_data,
     }
 }
 
-void print_current_layer(uint8_t row) {
-    char layer_str[8];
-    switch (get_highest_layer(layer_state)) {
-        case _BASE:
-            strcpy(layer_str, "Base");
-            break;
-        case _LOWER:
-            strcpy(layer_str, "Lower");
-            break;
-        case _RAISE:
-            strcpy(layer_str, "Raise");
-            break;
-        case _ADJUST:
-            strcpy(layer_str, "Adjust");
-            break;
-        default:
-            // strcpy(layer_str, "Unknown");
-            // TODO: consider remove snprintf
-            snprintf(layer_str, sizeof(layer_str), "%d", get_highest_layer(layer_state));
+void keyboard_post_init_user(void) {
+    pin_t dsp_pen_pin = get_charge_pump_enable_pin();
+    gpio_set_pin_output(dsp_pen_pin);
+    gpio_write_pin_low(dsp_pen_pin);
+    wait_ms(5);
+
+    transaction_register_rpc(USER_SYNC_ONTIME, user_sync_ontime_slave);
+    transaction_register_rpc(USER_SYNC_LASTKEY, user_sync_lastkey_slave);
+    transaction_register_rpc(USER_SYNC_PRESSES, user_sync_presses_slave);
+
+    if (!is_keyboard_master()) {
+        wait_ms(90); // wait for master to be ready
     }
-
-    oled_set_cursor(0, row);
-    oled_print_right_aligned(layer_str, g_oled_max_char);
-}
-
-void print_uptime(uint8_t row) {
-    uint32_t time_ms = timer_read32();
-    uint32_t total_min = time_ms / 60000u;
-    uint32_t hours = total_min / 60u;
-    uint32_t minutes = total_min % 60u;
-    if (hours > 999u) {
-        hours = 999u;
-        minutes = 59u;
-    }
-
-    // TODO: Consider remove snprintf
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%3luh%02lum", hours, minutes);
-    oled_set_cursor(0, row);
-    oled_print_right_aligned(buf, g_oled_max_char);
-}
-
-void print_wpm(uint8_t row) {
-    uint16_t wpm = get_current_dwpm();
-    uint16_t wpm_int = wpm / 10u;
-    uint16_t wpm_frac = wpm % 10u;
-
-    char buf[11];
-    snprintf(buf, sizeof(buf), "%3u.%1u WPM", wpm_int, wpm_frac);
-    oled_set_cursor(0, row);
-    oled_print_right_aligned(buf, g_oled_max_char);
 }
 
 void housekeeping_task_user(void) {
@@ -376,12 +422,10 @@ void housekeeping_task_user(void) {
     }
 }
 
-
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     g_user_ontime = timer_read32();
 
     if (record->event.pressed) {
-        // store the last keycode pressed
         g_last_keycode = keycode;
 
         uint8_t row = record->event.key.row;
@@ -402,6 +446,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    return OLED_ROTATION_90;
+}
+
 bool oled_post_init(void) {
     if (!g_oled_init_done) {
         // set OLED size for characters
@@ -411,35 +459,27 @@ bool oled_post_init(void) {
         // enable charge pump
         pin_t dsp_pen_pin = get_charge_pump_enable_pin();
         gpio_write_pin_high(dsp_pen_pin);
-
         wait_ms(20);
         oled_clear();
 
         // start timer for splash screen
-        splash_start_ms = timer_read32();
-        splash_active = true;
+        g_splash_start_ms = timer_read32();
+        g_splash_active = true;
 
         g_oled_init_done = true;
     }
     return false;
 }
 
-oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-    return OLED_ROTATION_90;
-}
-
-static void render_splash(void) {
-    oled_clear();
-    oled_set_cursor(0, 0);
-    oled_write_raw_P(STARTUP_BITMAP, sizeof(STARTUP_BITMAP));
-}
 
 bool oled_task_user(void) {
+    // perform custom initialisation once
     oled_post_init();
 
-    if (splash_active) {
-        if (timer_elapsed32(splash_start_ms) > SPLASH_DURATION_MS) {
-            splash_active = false;
+    // render splash screen
+    if (g_splash_active) {
+        if (timer_elapsed32(g_splash_start_ms) > SPLASH_DURATION_MS) {
+            g_splash_active = false;
             oled_clear();
             g_user_ontime = timer_read32();
         } else {
@@ -480,8 +520,8 @@ bool oled_task_user(void) {
     if (total == 0) {
         total = 1;  // avoid div by 0
     }
-    uint8_t pct_left = (uint8_t)((100 * local_presses_left) / total + 0.5f);
-    uint8_t pct_right = (uint8_t)((100 * local_presses_right) / total + 0.5f);
+    uint8_t pct_left = round_percentage((100.0f * local_presses_left) / total);
+    uint8_t pct_right = round_percentage((100.0f * local_presses_right) / total);
 
     if (is_keyboard_left()) {
         // Layer state
@@ -490,10 +530,6 @@ bool oled_task_user(void) {
         print_current_layer(1);
 
         // Lock status
-        // TODO: NUM lock and SCROLL lock bit detection may not work on macOS
-        //       Test on Windows/Linux
-        // TODO: Keycode strings missing for NUM_LOCK and SCROLL_LOCK in keycode_string.h
-        //       Manual patch needed
         led_t led_state = host_keyboard_led_state();
         if (led_state.num_lock) {
             oled_blit_16x16_P(NUM_LOCK_BITMAP, 0, 3);
@@ -514,10 +550,7 @@ bool oled_task_user(void) {
         // split balance
         oled_set_cursor(0, 7);
         oled_write_P(PSTR("Left:"), false);
-        oled_set_cursor(0, 8);
-        char balance_buf[6];
-        snprintf(balance_buf, sizeof(balance_buf), "%3u %%", pct_left);
-        oled_print_right_aligned(balance_buf, g_oled_max_char);
+        print_balance(8, pct_left);
 
         // Last key pressed
         oled_set_cursor(0, 10);
@@ -527,15 +560,6 @@ bool oled_task_user(void) {
         oled_print_right_aligned(keycode_str, g_oled_max_char);
 
         // QMK logo
-        static const char PROGMEM QMK_LOGO_1[] = {
-            0x81, 0x82, 0x83, 0x84, 0x00
-        };
-        static const char PROGMEM QMK_LOGO_2[] = {
-            0xA1, 0xA2, 0xA3, 0xA4, 0x00
-        };
-        static const char PROGMEM QMK_LOGO_3[] = {
-            0xC1, 0xC2, 0xC3, 0xC4, 0x00
-        };
         oled_set_cursor(0, 13);
         oled_write_P(QMK_LOGO_1, false);
         oled_set_cursor(0, 14);
@@ -560,10 +584,7 @@ bool oled_task_user(void) {
         // split balance
         oled_set_cursor(0, 7);
         oled_write_P(PSTR("Right:"), false);
-        oled_set_cursor(0, 8);
-        char balance_buf[6];
-        snprintf(balance_buf, sizeof(balance_buf), "%3u %%", pct_right);
-        oled_print_right_aligned(balance_buf, g_oled_max_char);
+        print_balance(8, pct_right);
 
         // Keebart logo
         oled_blit_24x24_P(KEEBART_BITMAP_24x24, 20, 11);
@@ -573,19 +594,4 @@ bool oled_task_user(void) {
     return false;
 }
 
-void keyboard_post_init_user(void) {
-    pin_t dsp_pen_pin = get_charge_pump_enable_pin();
-    gpio_set_pin_output(dsp_pen_pin);
-    gpio_write_pin_low(dsp_pen_pin);
-    wait_ms(5);
-
-    transaction_register_rpc(USER_SYNC_ONTIME, user_sync_ontime_slave);
-    transaction_register_rpc(USER_SYNC_LASTKEY, user_sync_lastkey_slave);
-    transaction_register_rpc(USER_SYNC_PRESSES, user_sync_presses_slave);
-
-    if (!is_keyboard_master()) {
-        wait_ms(90);
-    }
-}
 #endif // OLED_ENABLE
-
