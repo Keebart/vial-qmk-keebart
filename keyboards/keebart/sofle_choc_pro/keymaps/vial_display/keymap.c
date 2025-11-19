@@ -129,11 +129,7 @@ static ontime_m2s_t g_remote_ontime = {0};
 static presses_m2s_t g_remote_presses = {0, 0};
 
 static inline pin_t get_charge_pump_enable_pin(void) {
-    if (is_keyboard_left()) {
-        return GP20;
-    } else {
-        return GP20;
-    }
+    return GP20;
 }
 
 void oled_blit_16x16_P(const char *icon, uint8_t x, uint8_t page) {
@@ -328,7 +324,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-    return OLED_ROTATION_90;
+    return OLED_ROTATION_270;
 }
 
 bool oled_post_init(void) {
