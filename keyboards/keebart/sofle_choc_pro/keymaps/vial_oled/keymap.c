@@ -104,8 +104,8 @@ static const char PROGMEM QMK_LOGO_3[] = {
 };
 
 typedef struct {
-    uint32_t user;
-} ontime_m2s_t;
+    bool oled_on;
+} oled_state_m2s_t;
 
 typedef struct {
     uint16_t keycode;
@@ -120,12 +120,13 @@ static bool g_oled_init_done = false;
 static uint8_t g_oled_max_char;
 static uint8_t g_oled_max_line;
 static bool g_splash_active = true;
+static bool g_splash_rendered = false;
 static uint32_t g_splash_start_ms = 0;
 static uint32_t g_user_ontime = 0;
 static uint16_t g_last_keycode = KC_NO;
 static uint32_t g_press_left = 0;
 static uint32_t g_press_right = 0;
-static ontime_m2s_t g_remote_ontime = {0};
+static oled_state_m2s_t g_remote_oled_state = { true };
 static presses_m2s_t g_remote_presses = {0, 0};
 
 static inline pin_t get_charge_pump_enable_pin(void) {
@@ -247,15 +248,19 @@ void print_balance(uint8_t row, uint8_t pct) {
 }
 
 void render_splash(void) {
+    if (g_splash_rendered) {
+        return;
+    }
     oled_clear();
     oled_set_cursor(0, 0);
     oled_write_raw_P(STARTUP_BITMAP, sizeof(STARTUP_BITMAP));
+    g_splash_rendered = true;
 }
 
-static void user_sync_ontime_slave(uint8_t in_len, const void* in_data,
-                                   uint8_t out_len, void* out_data) {
-    if (in_len >= sizeof(ontime_m2s_t)) {
-        memcpy(&g_remote_ontime, in_data, sizeof(ontime_m2s_t));
+static void user_sync_oled_state_slave(uint8_t in_len, const void* in_data,
+                                       uint8_t out_len, void* out_data) {
+    if (in_len >= sizeof(oled_state_m2s_t)) {
+        memcpy(&g_remote_oled_state, in_data, sizeof(oled_state_m2s_t));
     }
 }
 
@@ -280,7 +285,7 @@ void keyboard_post_init_user(void) {
     gpio_write_pin_low(dsp_pen_pin);
     wait_ms(5);
 
-    transaction_register_rpc(USER_SYNC_ONTIME, user_sync_ontime_slave);
+    transaction_register_rpc(USER_SYNC_OLED_STATE, user_sync_oled_state_slave);
     transaction_register_rpc(USER_SYNC_LASTKEY, user_sync_lastkey_slave);
     transaction_register_rpc(USER_SYNC_PRESSES, user_sync_presses_slave);
 
@@ -293,8 +298,11 @@ void housekeeping_task_user(void) {
     if (is_keyboard_master()) {
         static uint32_t last_sync = 0;
         if (timer_elapsed32(last_sync) > 50) {
-            ontime_m2s_t ontime_pkt = { g_user_ontime };
-            (void)transaction_rpc_send(USER_SYNC_ONTIME, sizeof(ontime_pkt), &ontime_pkt);
+            oled_state_m2s_t oled_state_pkt = { is_oled_on() };
+            (void)transaction_rpc_send(
+                USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
+            );
+            last_sync = timer_read32();
         }
     }
 }
@@ -365,31 +373,43 @@ bool oled_task_user(void) {
         return false;
     }
 
-    uint32_t local_ontime;
+    // sync key presses
     uint32_t local_presses_left, local_presses_right;
     if (is_keyboard_master()) {
-        local_ontime = g_user_ontime;
         local_presses_left = g_press_left;
         local_presses_right = g_press_right;
     } else {
-        local_ontime = g_remote_ontime.user;
         local_presses_left = g_remote_presses.left;
         local_presses_right = g_remote_presses.right;
     }
 
-    // TODO: Sync the device ontime
-    const uint32_t idle_time = timer_elapsed32(local_ontime);
-    if (!is_oled_on()) {
-        if (idle_time > OLED_TIMEOUT_USER) {
-            return false;
+    // manage oled on/off state based on idle time
+    if (is_keyboard_master()) {
+        const uint32_t idle_time = timer_elapsed32(g_user_ontime);
+        if (!is_oled_on()) {
+            if (idle_time > OLED_TIMEOUT_USER) {
+                return false; // stay off
+            } else {
+                oled_on();
+            }
         } else {
-            oled_on();
+            if (idle_time > OLED_TIMEOUT_USER) {
+                oled_off();
+                return false;
+            } else {
+                // stay on
+            }
         }
     } else {
-        if (idle_time > OLED_TIMEOUT_USER) {
-            oled_off();
-            return false;
+        if (g_remote_oled_state.oled_on) {
+            if (!is_oled_on()) {
+                oled_on();
+            }
         } else {
+            if (is_oled_on()) {
+                oled_off();
+                return false;
+            }
         }
     }
 
