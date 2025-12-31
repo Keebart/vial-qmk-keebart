@@ -526,11 +526,16 @@ bool oled_task_user(void) {
         if (g_remote_oled_state.oled_on) {
             if (!is_oled_on()) {
                 oled_on();
+            } else {
+                // stay on
             }
         } else {
             if (is_oled_on()) {
                 oled_off();
                 return false;
+            } else {
+                return false;
+                // stay off
             }
         }
     }
