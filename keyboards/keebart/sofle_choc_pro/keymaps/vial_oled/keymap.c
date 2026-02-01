@@ -126,7 +126,7 @@ static uint32_t g_user_ontime = 0;
 static uint16_t g_last_keycode = KC_NO;
 static uint32_t g_press_left = 0;
 static uint32_t g_press_right = 0;
-static oled_state_m2s_t g_remote_oled_state = { true };
+static oled_state_m2s_t g_remote_oled_state = { false };
 static presses_m2s_t g_remote_presses = {0, 0};
 
 static inline pin_t get_charge_pump_enable_pin(void) {
@@ -297,7 +297,7 @@ void keyboard_post_init_user(void) {
 void housekeeping_task_user(void) {
     if (is_keyboard_master()) {
         static uint32_t last_sync = 0;
-        if (timer_elapsed32(last_sync) > 50) {
+        if (timer_elapsed32(last_sync) > 500) {
             oled_state_m2s_t oled_state_pkt = { is_oled_on() };
             (void)transaction_rpc_send(
                 USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
@@ -391,10 +391,18 @@ bool oled_task_user(void) {
                 return false; // stay off
             } else {
                 oled_on();
+                oled_state_m2s_t oled_state_pkt = { true };
+                (void)transaction_rpc_send(
+                    USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
+                );
             }
         } else {
             if (idle_time > OLED_TIMEOUT_USER) {
                 oled_off();
+                oled_state_m2s_t oled_state_pkt = { false };
+                (void)transaction_rpc_send(
+                    USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
+                );
                 return false;
             } else {
                 // stay on
