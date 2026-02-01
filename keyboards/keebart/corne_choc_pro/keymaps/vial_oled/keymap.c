@@ -242,7 +242,7 @@ static uint32_t g_user_ontime = 0;
 static uint16_t g_last_keycode = KC_NO;
 static uint32_t g_press_left = 0;
 static uint32_t g_press_right = 0;
-static oled_state_m2s_t g_remote_oled_state = { true };
+static oled_state_m2s_t g_remote_oled_state = { false };
 static presses_m2s_t g_remote_presses = {0, 0};
 
 static inline pin_t get_charge_pump_enable_pin(void) {
