@@ -1,0 +1,7 @@
+USER_NAME := manna-harbour_miryoku
+
+OLED_ENABLE = yes
+OLED_DRIVER = ssd1306
+OLED_TRANSPORT = i2c
+WPM_ENABLE = yes
+KEYCODE_STRING_ENABLE = yes
