@@ -1,30 +1,64 @@
 # Sofle Choc Pro
 
-![sofle_choc_pro](https://raw.githubusercontent.com/Keebart/picture-cdn/refs/heads/main/sofle/main.webp)
+![Sofle Choc Pro](https://raw.githubusercontent.com/Keebart/picture-cdn/refs/heads/main/sofle/main.webp)
 
-A complete remake of the Sofle Choc Keyboard by Josef Adamčík. Featuring an onboard RP2040 with 16 MB flash
-memory, choc-spaced keys for a more compact keyboard and integrated OLED displays.
+The Keebart Sofle Choc Pro is a compact redesign of the Sofle Choc keyboard
+by Josef Adamcik. Each half includes an integrated RP2040 controller,
+Choc-spaced keys, a rotary encoder, per-key RGB lighting, and an integrated
+OLED display.
 
-- Keyboard Maintainer: [Keebart](https://github.com/Keebart)
-- Hardware Supported: RP2040
-- Hardware Availability: [Keebart Shop](https://keebart.com/products/sofle)
+- Maintainer: [Keebart](https://github.com/Keebart)
+- Processor: RP2040
+- Layout: Split 4x6 with five-key thumb clusters
+- Split transport: Serial over USB-C
+- Lighting: 60-key RGB Matrix, split evenly between the halves
+- Controls: One rotary encoder per half
+- Displays: Integrated OLED on each half
+- Hardware availability: [Keebart Shop](https://keebart.com/products/sofle)
 
-Make example for this keyboard (after setting up your build environment):
+## Supported keymaps
 
-    make keebart/sofle_choc_pro:default
-    make keebart/sofle_choc_pro:vial
+- `default`: Standard QWERTY keymap with encoder support
+- `vial`: Runtime keymap, encoder, and RGB configuration through Vial
+- `vial_oled`: Vial with OLED functionality
 
-Flashing example for this keyboard:
+## Building
 
-    make keebart/sofle_choc_pro:default:flash
-    make keebart/sofle_choc_pro:vial:flash
+Precompiled firmware files can be downloaded from the
+[Sofle Choc Pro product page](https://keebart.com/products/sofle).
 
-See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with our [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).
+Set up a [QMK build environment](https://docs.qmk.fm/newbs_getting_started)
+and run one of the following commands from the QMK firmware directory:
 
-## Bootloader
+```sh
+qmk compile -kb keebart/sofle_choc_pro -km default
+qmk compile -kb keebart/sofle_choc_pro -km vial
+qmk compile -kb keebart/sofle_choc_pro -km vial_oled
+```
 
-Enter the bootloader in 3 ways:
+The resulting UF2 file is written to the QMK firmware directory.
 
-- **Bootmagic reset**: Hold down the top left key of the left side of the keyboard while connecting the left side to the computer. Similarly, hold down the top right key of the right side of the keyboard while connecting the right side to the computer.
-- **Physical reset button**: Briefly press the button on the back of the PCB
-- **Keycode in layout**: Press the key mapped to `QK_BOOT` if it is available
+## Flashing
+
+Each half contains its own RP2040 and must be flashed separately. Build the
+desired firmware once and copy the same UF2 file to both halves.
+
+The bootloader can be entered in any of these ways:
+
+- **Bootmagic:** Hold the outer key of the top row while connecting that half
+  to USB.
+- **BOOT and RESET buttons:** Both buttons are accessible through the two small
+  holes on the underside of the keyboard. Hold **BOOT**, briefly press and
+  release **RESET**, then release **BOOT**.
+- **Keycode:** Use a key mapped to `QK_BOOT`, when available in the active
+  keymap.
+
+## OLED and RGB Matrix
+
+OLED support is enabled by the `vial_oled` keymap. The OLEDs show keyboard
+status such as the active layer, current key activity, and typing speed.
+
+The keyboard has 30 RGB LEDs on each half, driven from `GP10`. Lighting
+settings are stored independently in each half's EEPROM. If either half can
+be used as the USB master, configure or reset the lighting state on both
+halves as required.

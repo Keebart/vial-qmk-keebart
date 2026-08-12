@@ -1,38 +1,84 @@
 # Corne Choc Pro
 
-![corne_choc_pro](https://raw.githubusercontent.com/Keebart/picture-cdn/refs/heads/main/corne/main.webp)
+![Corne Choc Pro](https://raw.githubusercontent.com/Keebart/picture-cdn/refs/heads/main/corne/main.webp)
 
-A complete remake of the Corne v4 choc keyboard [crkbd](https://github.com/foostan/crkbd/) with more features and improvements such as USB-C between both halves, improved EMI stability and integrated OLED displays.
+The Keebart Corne Choc Pro is a redesigned Corne v4 Choc keyboard based on
+the original [crkbd](https://github.com/foostan/crkbd/). It combines
+Choc switches on an MX-spaced layout with integrated RP2040 controllers,
+USB-C communication
+between the halves, per-key RGB lighting, rotary encoder support, and
+integrated OLED displays.
 
-This firmware is also 100% compatible with the [Corne MX Pro](https://www.keebart.com/products/corne-mx) keyboard.
+The same firmware is compatible with the
+[Corne MX Pro](https://keebart.com/products/corne-mx).
 
-- Keyboard Maintainer: [Keebart](https://github.com/Keebart)
-- Hardware Supported: RP2040
-- Hardware Availability: [Keebart Shop](https://keebart.com/products/corne)
+- Maintainer: [Keebart](https://github.com/Keebart)
+- Processor: RP2040
+- Switches and spacing: Choc switches with MX spacing
+- Layouts: Split 3x6+3 Standard and split 3x5+3 Mini
+- Split transport: Serial over USB-C
+- Lighting: RGB Matrix with 23 LEDs per Standard half
+- Displays: Integrated OLED on each half
+- Hardware availability: [Keebart Shop](https://keebart.com/products/corne)
 
-Make example for this keyboard (after setting up your build environment):
+## Variants and keymaps
 
-    make keebart/corne_choc_pro/standard:default
-    make keebart/corne_choc_pro/standard:vial
-    make keebart/corne_choc_pro/mini:default
-    make keebart/corne_choc_pro/mini:vial_mini
+Use `standard` for the six-column version and `mini` for the five-column
+version.
 
-Flashing example for this keyboard:
+- `default`: Standard QWERTY keymap
+- `vial`: Vial keymap for the Standard variant
+- `vial_mini`: Vial keymap for the Mini variant
+- `vial_oled` and `vial_mini_oled`: Vial with OLED functionality
+- `miryoku`: Miryoku without OLED functionality
+- `miryoku_oled`: Miryoku with OLED functionality
 
-    make keebart/corne_choc_pro/standard:default:flash
-    make keebart/corne_choc_pro/standard:vial:flash
-    make keebart/corne_choc_pro/mini:default:flash
-    make keebart/corne_choc_pro/mini:vial_mini:flash
+## Building
 
+Precompiled firmware files can be downloaded from the
+[Corne Choc Pro product page](https://keebart.com/products/corne).
 
-"Standard" for the standard keyboard with 6 columns and "Mini" for the shorter keyboard with 5 columns.
+Set up a [QMK build environment](https://docs.qmk.fm/newbs_getting_started)
+and run the command matching the keyboard variant and keymap:
 
-See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with our [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).
+```sh
+qmk compile -kb keebart/corne_choc_pro/standard -km default
+qmk compile -kb keebart/corne_choc_pro/standard -km vial
+qmk compile -kb keebart/corne_choc_pro/standard -km vial_oled
+qmk compile -kb keebart/corne_choc_pro/standard -km miryoku
+qmk compile -kb keebart/corne_choc_pro/standard -km miryoku_oled
 
-## Bootloader
+qmk compile -kb keebart/corne_choc_pro/mini -km default
+qmk compile -kb keebart/corne_choc_pro/mini -km vial_mini
+qmk compile -kb keebart/corne_choc_pro/mini -km vial_mini_oled
+qmk compile -kb keebart/corne_choc_pro/mini -km miryoku
+qmk compile -kb keebart/corne_choc_pro/mini -km miryoku_oled
+```
 
-Enter the bootloader in 3 ways:
+The resulting UF2 file is written to the QMK firmware directory.
 
-- **Bootmagic reset**: Hold down the "Q" key of the left side of the keyboard while connecting the left side to the computer. Similarly, hold down the "P" key of the right side of the keyboard while connecting the right side to the computer. (Keys reference the standard QWERTY position)
-- **Physical reset button**: Briefly press the button on the back of the PCB
-- **Keycode in layout**: Press the key mapped to `QK_BOOT` if it is available
+## Flashing
+
+Each half contains its own RP2040 and must be flashed separately. Build the
+desired firmware once and copy the same UF2 file to both halves.
+
+The bootloader can be entered in any of these ways:
+
+- **Bootmagic:** Hold the outer key of the top row while connecting that half
+  to USB. In the standard QWERTY layout, this is **Q** on the left half and
+  **P** on the right half.
+- **BOOT and RESET buttons:** Both buttons are accessible through the two small
+  holes on the underside of the keyboard. Hold **BOOT**, briefly press and
+  release **RESET**, then release **BOOT**.
+- **Keycode:** Use a key mapped to `QK_BOOT`, when available in the active
+  keymap.
+
+## OLED and RGB Matrix
+
+OLED support is enabled only by keymaps whose names end in `_oled`. The OLEDs
+show keyboard status such as the active layer, current key activity, and
+typing speed.
+
+RGB Matrix data uses `GP10`. Lighting settings are stored independently in
+each half's EEPROM. If either half can be used as the USB master, configure or
+reset the lighting state on both halves as required.
