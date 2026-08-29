@@ -21,6 +21,8 @@ OLED display.
 - `default`: Standard QWERTY keymap with encoder support
 - `vial`: Runtime keymap, encoder, and RGB configuration through Vial
 - `vial_oled`: Vial with OLED functionality
+- `miryoku`: Miryoku on the inner 3x5+3 keys
+- `miryoku_oled`: Miryoku with OLED functionality
 
 ## Building
 
@@ -34,6 +36,8 @@ and run one of the following commands from the QMK firmware directory:
 qmk compile -kb keebart/sofle_choc_pro -km default
 qmk compile -kb keebart/sofle_choc_pro -km vial
 qmk compile -kb keebart/sofle_choc_pro -km vial_oled
+qmk compile -kb keebart/sofle_choc_pro -km miryoku
+qmk compile -kb keebart/sofle_choc_pro -km miryoku_oled
 ```
 
 The resulting UF2 file is written to the QMK firmware directory.
