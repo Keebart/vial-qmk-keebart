@@ -144,6 +144,12 @@
         }
     },
     "rgb_matrix": {
+        "default": {
+            "animation": "solid_color",
+            "hue": 142,
+            "sat": 252,
+            "val": 75
+        },
         "driver": "ws2812",
         "max_brightness": 100,
         "animations": {

@@ -4,6 +4,12 @@
         "pid": "0x0004"
     },
     "rgb_matrix": {
+        "default": {
+            "animation": "solid_color",
+            "hue": 142,
+            "sat": 252,
+            "val": 75
+        },
         "split_count": [23, 23],
         "layout": [
             {"matrix": [3, 5], "x": 95, "y": 63, "flags": 4},
