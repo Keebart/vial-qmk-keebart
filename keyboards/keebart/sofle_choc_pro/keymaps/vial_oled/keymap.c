@@ -356,6 +356,18 @@ bool oled_post_init(void) {
     return false;
 }
 
+bool all_oled_off(void) {
+    oled_off();
+    oled_state_m2s_t oled_state_pkt = { false };
+    (void)transaction_rpc_send(
+        USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
+    );
+    return true;
+}
+
+void suspend_power_down_user(void) {
+    all_oled_off();
+}
 
 bool oled_task_user(void) {
     // perform custom initialisation once
@@ -398,11 +410,7 @@ bool oled_task_user(void) {
             }
         } else {
             if (idle_time > OLED_TIMEOUT_USER) {
-                oled_off();
-                oled_state_m2s_t oled_state_pkt = { false };
-                (void)transaction_rpc_send(
-                    USER_SYNC_OLED_STATE, sizeof(oled_state_pkt), &oled_state_pkt
-                );
+                all_oled_off();
                 return false;
             } else {
                 // stay on
