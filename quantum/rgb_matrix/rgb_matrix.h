@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "rgb_matrix_types.h"
+#include "rgb_matrix_reinit.h"
 #include "rgb_matrix_drivers.h"
 #include "color.h"
 #include "keyboard.h"

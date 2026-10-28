@@ -47,6 +47,12 @@ The resulting UF2 file is written to the QMK firmware directory.
 Each half contains its own RP2040 and must be flashed separately. Build the
 desired firmware once and copy the same UF2 file to both halves.
 
+For a single-display keyboard, flash `vial_oled` on the half with a display
+and `vial` on the half without one. The `miryoku_oled` and `miryoku` pair also
+supports a single display. Build both halves from the same firmware revision;
+older OLED and non-OLED builds use different split protocols. USB can connect
+to either half, and display status is synchronized from either USB master.
+
 The bootloader can be entered in any of these ways:
 
 - **Bootmagic:** Hold the outer key of the top row while connecting that half

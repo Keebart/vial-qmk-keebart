@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+#pragma once
+
+// Keep the wire protocol identical on OLED and non-OLED halves.
+#define SELECT_SOFT_SERIAL_SPEED 2
+#define SPLIT_TRANSPORT_MIRROR
+#define SPLIT_WPM_ENABLE
+#define SPLIT_WATCHDOG_TIMEOUT 4000
+#define SPLIT_TRANSACTION_IDS_USER USER_SYNC_OLED_STATE, USER_SYNC_LASTKEY, USER_SYNC_PRESSES
+
+#define OLED_TIMEOUT_USER 60000

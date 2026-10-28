@@ -300,7 +300,13 @@ static inline void dump_key_buffer(void) {
         state &= ~(1 << key_index);    \
     } while (0)
 
+#ifdef KEEBART_STUDIO_TAP_DANCE
+extern uint16_t kst_combo_code(const uint16_t *,uint16_t);
+#endif
 static inline void _find_key_index_and_count(const uint16_t *keys, uint16_t keycode, uint16_t *key_index, uint8_t *key_count) {
+#ifdef KEEBART_STUDIO_TAP_DANCE
+    keycode = kst_combo_code(keys, keycode);
+#endif
     while (true) {
         uint16_t key = pgm_read_word(&keys[*key_count]);
         if (COMBO_END == key) break;

@@ -20,5 +20,11 @@
 #define DYNAMIC_KEYMAP_LAYER_COUNT 16
 #define VIALRGB_NO_DIRECT
 
+#ifdef KEEBART_STUDIO_RGB_ENABLE
+#    define SPLIT_TRANSACTION_IDS_KB KSR_SYNC
+/* Stable only for this unchanged Vial EEPROM schema. First upgrade requires backup/restore. */
+#    define VIA_EEPROM_BUILD_ID 0x4B0101u
+#endif
+
 /* RP2040- and hardware-specific config */
 #define PICO_XOSC_STARTUP_DELAY_MULTIPLIER 64

@@ -1,3 +1,7 @@
+#ifdef KEEBART_STUDIO_MACROS
+#include "studio_macro.h"
+#include "macro_vm.h"
+#endif
 /* Copyright 2019 Jason Williams (Wilba)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -54,6 +58,10 @@
 #include "dynamic_keymap.h"
 #include "eeprom.h"
 #include "version.h" // for QMK_BUILDDATE used in EEPROM magic
+// Optional board-scoped schema ID; unchanged default for existing keyboards.
+#ifndef VIA_EEPROM_BUILD_ID
+#    define VIA_EEPROM_BUILD_ID BUILD_ID
+#endif
 #include "quantum/nvm/eeprom/nvm_eeprom_eeconfig_internal.h"
 #include "quantum/nvm/eeprom/nvm_eeprom_via_internal.h"
 
@@ -85,9 +93,9 @@ void via_qmk_rgb_matrix_get_value(uint8_t *data);
 // EEPROM is invalid and use/save defaults.
 bool via_eeprom_is_valid(void) {
 #ifdef VIAL_ENABLE
-    uint8_t magic0 = BUILD_ID & 0xFF;
-    uint8_t magic1 = (BUILD_ID >> 8) & 0xFF;
-    uint8_t magic2 = (BUILD_ID >> 16) & 0xFF;
+    uint8_t magic0 = VIA_EEPROM_BUILD_ID & 0xFF;
+    uint8_t magic1 = (VIA_EEPROM_BUILD_ID >> 8) & 0xFF;
+    uint8_t magic2 = (VIA_EEPROM_BUILD_ID >> 16) & 0xFF;
 #else
     char *  p      = QMK_BUILDDATE; // e.g. "2019-11-05-11:29:54"
     uint8_t magic0 = ((p[2] & 0x0F) << 4) | (p[3] & 0x0F);
@@ -102,9 +110,9 @@ bool via_eeprom_is_valid(void) {
 // Keyboard level code (eg. via_init_kb()) should not call this
 void via_eeprom_set_valid(bool valid) {
 #ifdef VIAL_ENABLE
-    uint8_t magic0 = BUILD_ID & 0xFF;
-    uint8_t magic1 = (BUILD_ID >> 8) & 0xFF;
-    uint8_t magic2 = (BUILD_ID >> 16) & 0xFF;
+    uint8_t magic0 = VIA_EEPROM_BUILD_ID & 0xFF;
+    uint8_t magic1 = (VIA_EEPROM_BUILD_ID >> 8) & 0xFF;
+    uint8_t magic2 = (VIA_EEPROM_BUILD_ID >> 16) & 0xFF;
 #else
     char *  p      = QMK_BUILDDATE; // e.g. "2019-11-05-11:29:54"
     uint8_t magic0 = ((p[2] & 0x0F) << 4) | (p[3] & 0x0F);
@@ -398,7 +406,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             break;
         }
         case id_dynamic_keymap_macro_set_buffer: {
-#ifdef VIAL_ENABLE
+#if defined(VIAL_ENABLE) && !defined(KEEBART_STUDIO_MACROS)
             /* Until keyboard is unlocked, don't allow changing macros */
             if (!vial_unlocked)
                 goto skip;

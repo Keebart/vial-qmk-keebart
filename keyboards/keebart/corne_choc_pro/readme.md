@@ -59,8 +59,23 @@ The resulting UF2 file is written to the QMK firmware directory.
 
 ## Flashing
 
-Each half contains its own RP2040 and must be flashed separately. Build the
-desired firmware once and copy the same UF2 file to both halves.
+Each half contains its own RP2040 and must be flashed separately. With the
+same hardware on both halves, copy the same UF2 file to both halves.
+
+For a mixed pair, flash `vial_oled` on the half with a display and `vial` on
+the half without one. For Mini, use `vial_mini_oled` and `vial_mini` instead.
+The `miryoku_oled` and `miryoku` pair also supports a single display.
+Build both halves from the same firmware revision; previously released
+OLED and non-OLED firmware use different split protocols. USB can connect
+to either half.
+
+The OLED Vial keymaps expose the extra keys and encoders on the half without
+a display. Select **None** for the OLED half's EX1/EX2 layout options in Vial,
+and **Key** or **Encoder** for the other half as fitted. OLED and encoder
+hardware share pins, so use the non-OLED firmware on an encoder half.
+Back up your Vial configuration before upgrading: the OLED keymaps now
+reserve EEPROM space for encoder mappings, matching their non-OLED partners,
+and reset the previous OLED EEPROM layout on first boot.
 
 The bootloader can be entered in any of these ways:
 

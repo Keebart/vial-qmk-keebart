@@ -154,7 +154,14 @@ __attribute__((weak)) int rgb_matrix_led_index(int index) {
     return index;
 }
 
+#ifdef KEEBART_STUDIO_RGB_ENABLE
+extern void ksr_capture_base_color(int index, uint8_t red, uint8_t green, uint8_t blue);
+#endif
+
 void rgb_matrix_set_color(int index, uint8_t red, uint8_t green, uint8_t blue) {
+#ifdef KEEBART_STUDIO_RGB_ENABLE
+    ksr_capture_base_color(index, red, green, blue);
+#endif
     rgb_matrix_driver.set_color(rgb_matrix_led_index(index), red, green, blue);
 }
 
@@ -372,6 +379,13 @@ static void rgb_task_flush(uint8_t effect) {
 
 void rgb_matrix_task(void) {
     rgb_task_timers();
+    // Drop any in-progress overlay frame and initialize the unchanged global
+    // effect from iteration zero before it may flush a persistent LED buffer.
+    if (rgb_matrix_consume_reinit_request()) {
+        rgb_matrix_set_color_all(0, 0, 0); // Effects may skip LEDs excluded by flags.
+        rgb_last_effect = UINT8_MAX;
+        rgb_task_state = STARTING;
+    }
 
     // Ideally we would also stop sending zeros to the LED driver PWM buffers
     // while suspended and just do a software shutdown. This is a cheap hack for now.

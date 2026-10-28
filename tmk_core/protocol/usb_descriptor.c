@@ -1196,6 +1196,13 @@ void set_serial_number_descriptor(void) {
  * USB host.
  */
 uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const uint16_t wLength, const void** const DescriptorAddress) {
+#ifdef KEEBART_STUDIO_DEVICE_NAME
+    // Names are presentation only; all immutable USB/model descriptors remain
+    // untouched. A direct guarded call also remains correct with whole-program LTO.
+    extern uint16_t keebart_usb_product_descriptor(const void **);
+    if (wValue == 0x0302) return keebart_usb_product_descriptor(DescriptorAddress);
+#endif
+
     const uint8_t DescriptorType  = (wValue >> 8);
     const uint8_t DescriptorIndex = (wValue & 0xFF);
     const void*   Address         = NULL;

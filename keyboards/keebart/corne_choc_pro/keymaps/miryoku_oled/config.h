@@ -17,15 +17,7 @@
 #define OLED_BRIGHTNESS 64
 #define OLED_UPDATE_INTERVAL 50
 #define OLED_TIMEOUT 0
-#define OLED_TIMEOUT_USER 60000
 #define OLED_FADE_OUT
-
-#define SELECT_SOFT_SERIAL_SPEED 2
-#define SPLIT_TRANSPORT_MIRROR
-#define SPLIT_WPM_ENABLE
-#define SPLIT_WATCHDOG_TIMEOUT 4000
-
-#define SPLIT_TRANSACTION_IDS_USER USER_SYNC_OLED_STATE, USER_SYNC_LASTKEY, USER_SYNC_PRESSES
 
 #define LAYOUT_miryoku( \
     K00, K01, K02, K03, K04,      K05, K06, K07, K08, K09, \
@@ -39,3 +31,5 @@ LAYOUT_split_3x5_3( \
     K20, K21, K22, K23, K24,      K25, K26, K27, K28, K29, \
               K32, K33, K34,      K35, K36, K37            \
 )
+
+#include "../../../common/oled_split_config.h"

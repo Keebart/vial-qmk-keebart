@@ -1,6 +1,7 @@
 VIA_ENABLE = yes
 VIAL_ENABLE = yes
 VIALRGB_ENABLE = yes
+ENCODER_MAP_ENABLE = yes
 CAPS_WORD_ENABLE = yes
 REPEAT_KEY_ENABLE = yes
 
@@ -9,3 +10,7 @@ OLED_DRIVER = ssd1306
 OLED_TRANSPORT = i2c
 WPM_ENABLE = yes
 KEYCODE_STRING_ENABLE = yes
+
+include keyboards/keebart/common/studio_rgb.mk
+
+OPT_DEFS += -DKEEBART_CORNE_OLED

@@ -1,0 +1,14 @@
+#pragma once
+#define VIAL_KEYBOARD_UID {0x4F, 0x2D, 0x5A, 0x8A, 0x49, 0x7C, 0xDF, 0x1D}
+
+#define VIAL_UNLOCK_COMBO_ROWS {0, 5}
+#define VIAL_UNLOCK_COMBO_COLS {0, 0}
+
+#ifndef SPLIT_TRANSACTION_IDS_KB
+#    define SPLIT_TRANSACTION_IDS_KB KSR_SYNC
+#endif
+#ifndef VIA_EEPROM_BUILD_ID
+#    define VIA_EEPROM_BUILD_ID 0x4B0301u
+#endif
+
+#define VIAL_UNLOCK_COUNTER_MAX 25

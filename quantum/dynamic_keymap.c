@@ -1,3 +1,7 @@
+#ifdef KEEBART_STUDIO_MACROS
+#include "studio_macro.h"
+#include "macro_vm.h"
+#endif
 /* Copyright 2017 Jason Williams (Wilba)
  * Copyright 2024-2025 Nick Brassel (@tzarc)
  *
@@ -208,18 +212,30 @@ uint16_t keycode_at_encodermap_location(uint8_t layer_num, uint8_t encoder_idx, 
 #endif // ENCODER_MAP_ENABLE
 
 uint8_t dynamic_keymap_macro_get_count(void) {
+#ifdef KEEBART_STUDIO_MACROS
+    ksm_abort();
+#endif
     return DYNAMIC_KEYMAP_MACRO_COUNT;
 }
 
 uint16_t dynamic_keymap_macro_get_buffer_size(void) {
+#ifdef KEEBART_STUDIO_MACROS
+    return KM_BYTES;
+#endif
     return (uint16_t)nvm_dynamic_keymap_macro_size();
 }
 
 void dynamic_keymap_macro_get_buffer(uint16_t offset, uint16_t size, uint8_t *data) {
+#ifdef KEEBART_STUDIO_MACROS
+    ksm_read(offset,size,data); return;
+#endif
     nvm_dynamic_keymap_macro_read_buffer(offset, size, data);
 }
 
 void dynamic_keymap_macro_set_buffer(uint16_t offset, uint16_t size, uint8_t *data) {
+#ifdef KEEBART_STUDIO_MACROS
+    ksm_write(offset,size,data); return;
+#endif
     nvm_dynamic_keymap_macro_update_buffer(offset, size, data);
 }
 
@@ -230,6 +246,9 @@ static uint8_t dynamic_keymap_read_byte(uint32_t offset) {
 }
 
 void dynamic_keymap_macro_reset(void) {
+#ifdef KEEBART_STUDIO_MACROS
+    ksm_reset(); return;
+#endif
     // Erase the macros, if necessary.
     nvm_dynamic_keymap_macro_erase();
     nvm_dynamic_keymap_macro_reset();
@@ -243,6 +262,9 @@ static uint16_t decode_keycode(uint16_t kc) {
 }
 
 void dynamic_keymap_macro_send(uint8_t id) {
+#ifdef KEEBART_STUDIO_MACROS
+    ksm_start(id); return;
+#endif
     if (id >= DYNAMIC_KEYMAP_MACRO_COUNT) {
         return;
     }

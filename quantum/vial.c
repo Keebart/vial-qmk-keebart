@@ -24,7 +24,9 @@
 
 #include "vial_ensure_keycode.h"
 
+#ifndef VIAL_UNLOCK_COUNTER_MAX
 #define VIAL_UNLOCK_COUNTER_MAX 50
+#endif
 
 #ifdef VIAL_INSECURE
 #pragma message "Building Vial-enabled firmware in insecure mode."
@@ -240,6 +242,9 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 #endif
 #ifdef LAYER_LOCK_ENABLE
                         | (1 << 1)  // Bit 1: Layer Lock.
+#endif
+#ifdef KEEBART_STUDIO_TAP_DANCE
+                        | (1 << 2)  // Bit 2: Shared Studio Tap Dance engine.
 #endif
                         );
                 break;

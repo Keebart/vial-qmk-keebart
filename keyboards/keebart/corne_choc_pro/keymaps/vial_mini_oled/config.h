@@ -11,12 +11,13 @@
 #define OLED_BRIGHTNESS 64
 #define OLED_UPDATE_INTERVAL 50
 #define OLED_TIMEOUT 0
-#define OLED_TIMEOUT_USER 60000
 #define OLED_FADE_OUT
 
-#define SELECT_SOFT_SERIAL_SPEED 2
-#define SPLIT_TRANSPORT_MIRROR
-#define SPLIT_WPM_ENABLE
-#define SPLIT_WATCHDOG_TIMEOUT 4000
+#include "../../../common/oled_split_config.h"
 
-#define SPLIT_TRANSACTION_IDS_USER USER_SYNC_OLED_STATE, USER_SYNC_LASTKEY, USER_SYNC_PRESSES
+#ifdef KEEBART_STUDIO_RGB_ENABLE
+// Encoder mappings move the following Vial EEPROM regions. Invalidate the
+// previous OLED schema once instead of interpreting its settings as encoders.
+#    undef VIA_EEPROM_BUILD_ID
+#    define VIA_EEPROM_BUILD_ID 0x4B0102u
+#endif

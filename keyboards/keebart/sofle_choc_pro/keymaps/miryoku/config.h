@@ -17,3 +17,5 @@ LAYOUT_split_4x6_5( \
     KC_NO, K20,   K21,   K22,   K23,   K24,   KC_NO,   KC_NO, K25,   K26,   K27,   K28,   K29,   KC_NO, \
                   KC_NO, KC_NO, K32,   K33,   K34,     K35,   K36,   K37,   KC_NO, KC_NO              \
 )
+
+#include "../../../common/oled_split_config.h"
