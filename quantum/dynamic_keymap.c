@@ -1,5 +1,6 @@
 #ifdef KEEBART_STUDIO_MACROS
 #include "studio_macro.h"
+#include "locales/qmk.h"
 #include "macro_vm.h"
 #endif
 /* Copyright 2017 Jason Williams (Wilba)
@@ -117,6 +118,13 @@ int dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_e
 }
 #endif
 
+#ifdef KEEBART_STUDIO_LOCALES
+#include "locales/locale.h"
+#define studio_stock_code(code) ksl_stock_code(code)
+#else
+#define studio_stock_code(code) (code)
+#endif
+
 void dynamic_keymap_reset(void) {
 #ifdef VIAL_ENABLE
     /* temporarily unlock the keyboard so we can set hardcoded QK_BOOT keycode */
@@ -131,13 +139,13 @@ void dynamic_keymap_reset(void) {
     for (int layer = 0; layer < DYNAMIC_KEYMAP_LAYER_COUNT; layer++) {
         for (int row = 0; row < MATRIX_ROWS; row++) {
             for (int column = 0; column < MATRIX_COLS; column++) {
-                dynamic_keymap_set_keycode(layer, row, column, keycode_at_keymap_location_raw(layer, row, column));
+                dynamic_keymap_set_keycode(layer, row, column, studio_stock_code(keycode_at_keymap_location_raw(layer, row, column)));
             }
         }
 #ifdef ENCODER_MAP_ENABLE
         for (int encoder = 0; encoder < NUM_ENCODERS; encoder++) {
-            dynamic_keymap_set_encoder(layer, encoder, true, keycode_at_encodermap_location_raw(layer, encoder, true));
-            dynamic_keymap_set_encoder(layer, encoder, false, keycode_at_encodermap_location_raw(layer, encoder, false));
+            dynamic_keymap_set_encoder(layer, encoder, true, studio_stock_code(keycode_at_encodermap_location_raw(layer, encoder, true)));
+            dynamic_keymap_set_encoder(layer, encoder, false, studio_stock_code(keycode_at_encodermap_location_raw(layer, encoder, false)));
         }
 #endif // ENCODER_MAP_ENABLE
     }
@@ -197,7 +205,11 @@ void dynamic_keymap_set_buffer(uint16_t offset, uint16_t size, uint8_t *data) {
 
 uint16_t keycode_at_keymap_location(uint8_t layer_num, uint8_t row, uint8_t column) {
     if (layer_num < DYNAMIC_KEYMAP_LAYER_COUNT && row < MATRIX_ROWS && column < MATRIX_COLS) {
+#ifdef KEEBART_STUDIO_MACROS
+        return ksl_qmk_binding(dynamic_keymap_get_keycode(layer_num,row,column),layer_num,row,column);
+#else
         return dynamic_keymap_get_keycode(layer_num, row, column);
+#endif
     }
     return KC_NO;
 }
@@ -205,7 +217,11 @@ uint16_t keycode_at_keymap_location(uint8_t layer_num, uint8_t row, uint8_t colu
 #ifdef ENCODER_MAP_ENABLE
 uint16_t keycode_at_encodermap_location(uint8_t layer_num, uint8_t encoder_idx, bool clockwise) {
     if (layer_num < DYNAMIC_KEYMAP_LAYER_COUNT && encoder_idx < NUM_ENCODERS) {
+#ifdef KEEBART_STUDIO_MACROS
+        return ksl_qmk_encoder_binding(dynamic_keymap_get_encoder(layer_num,encoder_idx,clockwise));
+#else
         return dynamic_keymap_get_encoder(layer_num, encoder_idx, clockwise);
+#endif
     }
     return KC_NO;
 }

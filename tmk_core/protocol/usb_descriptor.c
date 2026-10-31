@@ -1249,6 +1249,10 @@ uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const 
                     break;
 #endif // HAS_SERIAL_NUMBER
             }
+#ifdef KEEBART_STUDIO_LOCALES
+            extern void ksl_qmk_descriptor(uint16_t length);
+            ksl_qmk_descriptor(wLength);
+#endif
 #ifdef OS_DETECTION_ENABLE
             process_wlength(wLength);
 #endif

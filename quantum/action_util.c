@@ -533,3 +533,9 @@ void neutralize_flashing_modifiers(uint8_t active_mods) {
     }
 }
 #endif
+
+#ifdef KEEBART_STUDIO_LOCALES
+uint8_t ksl_suppressed_mods(void) {return suppressed_mods;}
+uint8_t ksl_override_mods(void) {return weak_override_mods;}
+uint8_t ksl_effective_mods(void) { return ((real_mods|weak_mods|oneshot_mods)&~suppressed_mods)|weak_override_mods; }
+#endif

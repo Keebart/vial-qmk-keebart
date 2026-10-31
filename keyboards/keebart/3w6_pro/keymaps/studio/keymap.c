@@ -1,42 +1,48 @@
-// Studio starts from the existing Vial keymap and remains a separate build.
 // Copyright 2026 Keebart
 // SPDX-License-Identifier: GPL-2.0-or-later
-
+// Studio stock: Base, Symbols, Navigation, System.
+// Edit this self-contained keymap to customize your firmware.
 #include QMK_KEYBOARD_H
 
-enum layer_names {
-    _BASE,
-    _LOWER,
-    _RAISE,
-    _ADJUST,
-};
-
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [_BASE] = LAYOUT_split_3x5_3(
-        KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,       KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
-        KC_A,    KC_S,    KC_D,    KC_F,    KC_G,       KC_H,    KC_J,    KC_K,    KC_L, KC_SCLN,
-        KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,       KC_N,    KC_M, KC_COMM,  KC_DOT, KC_SLSH,
-                          KC_LGUI, MO(_LOWER), KC_SPC,   KC_ENT, MO(_RAISE), KC_RALT
-    ),
-
-    [_LOWER] = LAYOUT_split_3x5_3(
-        QK_BOOT, KC_F1,   KC_F2,   KC_F3,   KC_F4,      KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,
-        KC_TAB,  KC_1,    KC_2,    KC_3,    KC_4,       KC_5,    KC_6,    KC_7,    KC_8,    KC_9,
-        KC_LSFT, KC_EXLM, KC_AT,   KC_HASH, KC_DLR,     KC_PERC, KC_CIRC, KC_AMPR, KC_ASTR, KC_0,
-                          _______, _______, _______,    _______, MO(_ADJUST), _______
-    ),
-
-    [_RAISE] = LAYOUT_split_3x5_3(
-        KC_ESC,  KC_INS,  KC_PSCR, KC_APP,  KC_CAPS,    KC_PGUP, KC_HOME, KC_UP,   KC_END,  KC_BSPC,
-        KC_LCTL, KC_LALT, KC_LGUI, KC_LSFT, XXXXXXX,    KC_PGDN, KC_LEFT, KC_DOWN, KC_RGHT, KC_DEL,
-        _______, KC_UNDO, KC_CUT,  KC_COPY, KC_PSTE,    XXXXXXX, KC_MPRV, KC_VOLD, KC_VOLU, KC_MNXT,
-                          _______, MO(_ADJUST), _______, _______, _______, _______
-    ),
-
-    [_ADJUST] = LAYOUT_split_3x5_3(
-        QK_BOOT, RGB_TOG, RGB_MOD, RGB_HUI, RGB_SAI,    RGB_VAI, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
-        EE_CLR,  RGB_RMOD,RGB_HUD, RGB_SAD, RGB_VAD,    XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
-        XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,    XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
-                          _______, _______, _______,    _______, _______, _______
-    ),
+    [0] = {
+        {0x0014, 0x001a, 0x0008, 0x0015, 0x0017},
+        {0x0004, 0x0016, 0x0007, 0x0009, 0x000a},
+        {0x001d, 0x001b, 0x0006, 0x0019, 0x0005},
+        {0x00e3, 0x7c77, 0x002c, 0x0000, 0x0000},
+        {0x001c, 0x0018, 0x000c, 0x0012, 0x0013},
+        {0x000b, 0x000d, 0x000e, 0x000f, 0x0033},
+        {0x0011, 0x0010, 0x0036, 0x0037, 0x0038},
+        {0x0028, 0x7c78, 0x00e6, 0x0000, 0x0000}
+    },
+    [1] = {
+        {0x001e, 0x001f, 0x0020, 0x0021, 0x0022},
+        {0x021e, 0x021f, 0x0220, 0x0221, 0x0222},
+        {0x002f, 0x0030, 0x022f, 0x0230, 0x0031},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000},
+        {0x0023, 0x0024, 0x0025, 0x0026, 0x0027},
+        {0x0223, 0x0224, 0x0225, 0x0226, 0x0227},
+        {0x002d, 0x002e, 0x0033, 0x0034, 0x0035},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000}
+    },
+    [2] = {
+        {0x0029, 0x002b, 0x0039, 0x0046, 0x0048},
+        {0x00e0, 0x00e2, 0x00e3, 0x00e1, 0x00e6},
+        {0x0235, 0x0231, 0x022d, 0x022e, 0x0233},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000},
+        {0x004a, 0x0052, 0x004d, 0x004b, 0x004c},
+        {0x0050, 0x0051, 0x004f, 0x004e, 0x002a},
+        {0x0234, 0x0236, 0x0237, 0x0238, 0x0049},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000}
+    },
+    [3] = {
+        {0x003a, 0x003b, 0x003c, 0x003d, 0x003e},
+        {0x0044, 0x0045, 0x0047, 0x0053, 0x0039},
+        {0x7820, 0x7828, 0x7827, 0x7d87, 0x7d86},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000},
+        {0x003f, 0x0040, 0x0041, 0x0042, 0x0043},
+        {0x00aa, 0x00a8, 0x00a9, 0x00be, 0x00bd},
+        {0x00ac, 0x00ae, 0x00ab, 0x0065, 0x0001},
+        {0x0001, 0x0001, 0x0001, 0x0000, 0x0000}
+    }
 };

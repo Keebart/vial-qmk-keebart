@@ -6,6 +6,8 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
     ifeq ($(strip $(KEYMAP)),studio)
         SRC += keyboards/keebart/common/tap_dance.c keyboards/keebart/common/studio_dance.c
         SRC += keyboards/keebart/common/device_name.c keyboards/keebart/common/studio_name.c
+        OPT_DEFS += -DKEEBART_STUDIO_LOCALES
+        SRC += keyboards/keebart/common/locales/alt_repeat.c keyboards/keebart/common/locales/locale.c keyboards/keebart/common/locales/locale_runtime.c keyboards/keebart/common/locales/locale_protocol.c keyboards/keebart/common/studio_locale.c
         OPT_DEFS += -DKEEBART_STUDIO_DEVICE_NAME
         OPT_DEFS += -DKEEBART_STUDIO_TAP_DANCE -DKEEBART_STUDIO_MACROS -DKEEBART_STUDIO_SPLIT_RETRY
         SRC += keyboards/keebart/common/macro_restore.c keyboards/keebart/common/macro_vm.c keyboards/keebart/common/macro_store.c keyboards/keebart/common/studio_macro.c

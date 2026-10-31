@@ -9,6 +9,8 @@
 #include "studio_macro.h"
 #include "studio_reset.h"
 #include "device_name.h"
+#include "locales/locale.h"
+#include "locales/qmk.h"
 #include <string.h>
 #define BASE 0x1f4000U
 _Static_assert(KN_RECORD==KM_NAME_BYTES,"Name metadata ABI changed");
@@ -35,9 +37,12 @@ static const struct km_storage storage={read_slot,erase_slot,program};
 static void init(void){if(initialized)return;selected=km_store_select(&storage);if(selected>=0)memcpy(active,read_slot(selected)+12,KM_BYTES);initialized=true;}
 const uint8_t *ksm_name_record(void){init();if(selected<0)return NULL;const uint8_t *p=read_slot(selected)+KM_SLOT_SIZE-KM_PAGE_SIZE;return kn_valid(p,KN_RECORD)?p:NULL;}
 bool ksm_save_name(const uint8_t *p){init();if(staging || !kn_valid(p,KN_RECORD))return false;if(!km_store_save_named(&storage,selected,active,p))return false;selected=selected==0?1:0;return true;}
+const uint8_t *ksm_locale_record(void){init();return selected<0?NULL:read_slot(selected)+KM_LOCALE_OFFSET;}
+bool ksm_save_locale(const uint8_t *p){init();if(staging||vm.active||!ksl_valid(p))return false;if(!km_store_save_full(&storage,selected,active,NULL,p))return false;selected=selected==0?1:0;return true;}
 static uint8_t macro_mods, mod_refs[8];
 static void emit(void *ctx,uint16_t code,bool down){
     (void)ctx;
+    if(ksl_qmk_code(code,down))return;
     uint8_t key=code & 255, mods=(code >> 8) & 15;
     if(code & 0x1000)mods <<= 4;
     if(key>=0xe0 && key<=0xe7){mods |= 1 << (key-0xe0);key=0;}
@@ -74,3 +79,5 @@ void ksm_task(void){
     if(usb_device_state_get_configure_state()!=USB_DEVICE_STATE_CONFIGURED){km_cancel(&vm,emit,NULL);ksm_abort();}else km_tick(&vm,clock_ms,emit,NULL);
 }
 bool ksm_key(uint16_t code,bool down){if(code==KC_ESC && down && vm.active){km_cancel(&vm,emit,NULL);return false;}return true;}
+
+bool ksm_running(void){return vm.active;}

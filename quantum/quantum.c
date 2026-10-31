@@ -16,6 +16,9 @@
 
 #include "quantum.h"
 #include "qmk_settings.h"
+#ifdef KEEBART_STUDIO_LOCALES
+#include "locales/qmk.h"
+#endif
 
 #ifdef BACKLIGHT_ENABLE
 #    include "process_backlight.h"
@@ -129,6 +132,9 @@ void do_code16(uint16_t code, void (*f)(uint8_t)) {
 }
 
 __attribute__((weak)) void register_code16(uint16_t code) {
+#ifdef KEEBART_STUDIO_LOCALES
+    if(ksl_qmk_code(code,true))return;
+#endif
     if (IS_MODIFIER_KEYCODE(code) || code == KC_NO) {
         do_code16(code, register_mods);
     } else {
@@ -138,6 +144,9 @@ __attribute__((weak)) void register_code16(uint16_t code) {
 }
 
 __attribute__((weak)) void unregister_code16(uint16_t code) {
+#ifdef KEEBART_STUDIO_LOCALES
+    if(ksl_qmk_code(code,false))return;
+#endif
     unregister_code(code);
     if (IS_MODIFIER_KEYCODE(code) || code == KC_NO) {
         do_code16(code, unregister_mods);
@@ -348,7 +357,10 @@ bool process_record_quantum_helper(uint16_t keycode, keyrecord_t *record) {
             // Must run asap to ensure all keypresses are recorded.
             process_dynamic_macro(keycode, record) &&
 #endif
-#ifdef REPEAT_KEY_ENABLE
+#ifdef KEEBART_STUDIO_LOCALES
+            ksl_qmk_record(keycode, record) &&
+            kar_qmk_record(keycode, record) &&
+#elif defined(REPEAT_KEY_ENABLE)
             process_last_key(keycode, record) && process_repeat_key(keycode, record) &&
 #endif
 #if defined(AUDIO_ENABLE) && defined(AUDIO_CLICKY)

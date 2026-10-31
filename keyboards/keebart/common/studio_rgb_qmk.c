@@ -1,4 +1,7 @@
 #include "release.h"
+#ifdef KEEBART_STUDIO_LOCALES
+#include "locales/qmk.h"
+#endif
 #ifdef KEEBART_STUDIO_MACROS
 #include "studio_dance.h"
 #endif
@@ -146,6 +149,9 @@ enum ksr_status ksr_platform_factory_reset(void) {
 #ifdef KEEBART_STUDIO_DEVICE_NAME
     extern void ksn_reset(void);
     ksn_reset();
+#ifdef KEEBART_STUDIO_LOCALES
+    ksl_qmk_reset();
+#endif
 #endif
     clear_keyboard();
     eeconfig_init(); // Formats EEPROM, restores keymap/encoders/macros/dynamic entries and RGB.
@@ -181,6 +187,7 @@ static void release_reply(uint8_t *data, bool internal) {
 static void peer_callback(uint8_t in_len, const void *in, uint8_t out_len, void *out) {
     if (in_len != 32 || out_len != 32 || is_keyboard_master()) { if (out_len) memset(out, 0, out_len); return; }
 #ifdef KEEBART_STUDIO_MACROS
+    if (((const uint8_t *)in)[4] == 0xe2) {memcpy(out,in,32);ksl_qmk_handle(out,true);return;}
     if (((const uint8_t *)in)[4] == 0xe1) {memcpy(out,in,32);ksn_handle(out,true);return;}
 #endif
     if (((const uint8_t *)in)[4] == 0xf0) {memcpy(out,in,32);release_reply(out,true);return;}
@@ -213,6 +220,7 @@ void housekeeping_task_kb(void) {
     if (slave) split_shared_memory_lock();
 #ifdef KEEBART_STUDIO_MACROS
     ksn_task();
+    ksl_qmk_task();
 #endif
     ksr_reset_task(now);
     ksr_task(now);
@@ -241,6 +249,7 @@ bool process_record_user(uint16_t keycode,keyrecord_t *record){return kst_key(ke
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     if (length != 32 || data[0] != KSR_COMMAND) { if (length) data[0] = 0xFF; return; }
 #ifdef KEEBART_STUDIO_MACROS
+    if (data[4] == 0xe2) {ksl_qmk_handle(data,false);return;}
     if (data[4] == 0xe1) {ksn_handle(data,false);return;}
 #endif
     if (data[4] == 0xf0) {release_reply(data,false);return;}

@@ -246,6 +246,9 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 #ifdef KEEBART_STUDIO_TAP_DANCE
                         | (1 << 2)  // Bit 2: Shared Studio Tap Dance engine.
 #endif
+#ifdef KEEBART_STUDIO_LOCALES
+                        | (1 << 3)  // Bit 3: Computer profiles and character actions.
+#endif
                         );
                 break;
             }
