@@ -9,3 +9,5 @@ uint16_t ksl_qmk_binding(uint16_t,uint8_t,uint8_t,uint8_t);
 uint16_t ksl_qmk_encoder_binding(uint16_t);
 
 bool kar_qmk_record(uint16_t,keyrecord_t *);
+
+bool ksl_qmk_lighting_awake(void);

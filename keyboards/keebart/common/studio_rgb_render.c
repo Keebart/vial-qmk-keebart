@@ -38,6 +38,10 @@ bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     uint8_t end = is_keyboard_left() ? split[0] : RGB_MATRIX_LED_COUNT;
     uint8_t layer = ksr_layer(layer_state, default_layer_state);
     bool enabled = rgb_matrix_is_enabled() && !rgb_matrix_get_suspend_state();
+#ifdef KEEBART_STUDIO_LOCALES
+    extern bool ksl_qmk_lighting_awake(void);
+    enabled = enabled && ksl_qmk_lighting_awake();
+#endif
     bool palette_enabled = enabled && layer < KSR_LAYERS;
     uint8_t locks = host_keyboard_leds();
     bool indicators = false;

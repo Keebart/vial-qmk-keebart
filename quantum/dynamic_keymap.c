@@ -230,8 +230,10 @@ uint16_t keycode_at_encodermap_location(uint8_t layer_num, uint8_t encoder_idx, 
 uint8_t dynamic_keymap_macro_get_count(void) {
 #ifdef KEEBART_STUDIO_MACROS
     ksm_abort();
-#endif
+    return KM_COUNT;
+#else
     return DYNAMIC_KEYMAP_MACRO_COUNT;
+#endif
 }
 
 uint16_t dynamic_keymap_macro_get_buffer_size(void) {

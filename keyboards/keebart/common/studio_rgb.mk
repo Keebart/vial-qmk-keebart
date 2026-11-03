@@ -4,9 +4,12 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
     OPT_DEFS += -DKEEBART_STUDIO_RGB_ENABLE -DCRT0_EXTRA_CORES_NUMBER=0
     COMMON_VPATH += keyboards/keebart/common
     ifeq ($(strip $(KEYMAP)),studio)
+        MOUSEKEY_ENABLE = yes
+        SRC += keyboards/keebart/common/studio_pointer.c keyboards/keebart/common/pointer/pointer.c
+        LDFLAGS += -Wl,--wrap=mousekey_on,--wrap=mousekey_off,--wrap=mousekey_task,--wrap=mousekey_clear,--wrap=mousekey_send,--wrap=mousekey_get_report
         SRC += keyboards/keebart/common/tap_dance.c keyboards/keebart/common/studio_dance.c
         SRC += keyboards/keebart/common/device_name.c keyboards/keebart/common/studio_name.c
-        OPT_DEFS += -DKEEBART_STUDIO_LOCALES
+        OPT_DEFS += -DKEEBART_STUDIO_LOCALES -DSPLIT_ACTIVITY_ENABLE
         SRC += keyboards/keebart/common/locales/alt_repeat.c keyboards/keebart/common/locales/locale.c keyboards/keebart/common/locales/locale_runtime.c keyboards/keebart/common/locales/locale_protocol.c keyboards/keebart/common/studio_locale.c
         OPT_DEFS += -DKEEBART_STUDIO_DEVICE_NAME
         OPT_DEFS += -DKEEBART_STUDIO_TAP_DANCE -DKEEBART_STUDIO_MACROS -DKEEBART_STUDIO_SPLIT_RETRY

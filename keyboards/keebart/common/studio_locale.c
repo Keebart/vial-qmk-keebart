@@ -14,6 +14,7 @@ extern bool ksm_save_locale(const uint8_t *);
 static struct ksl_transaction transaction;
 static struct ksl_runtime runtime;
 static bool initialized;
+#include "locales/rgb_port.inc"
 static struct kso_capture os_capture;
 static uint32_t os_applied_epoch=UINT32_MAX;
 void ksl_qmk_descriptor(uint16_t length){
@@ -49,7 +50,7 @@ static void replay(void *ctx,unsigned pos,uint16_t code,bool down,int64_t time){
     bypass--;
 }
 static void action(void *ctx,uint16_t code,bool down){
-    (void)ctx;bypass++;
+    (void)ctx;if(rgb_action(code,down))return;bypass++;
     if(down)vial_keycode_down(code);else vial_keycode_up(code);
     bypass--;
 }
@@ -77,6 +78,7 @@ static unsigned hand(void *ctx,unsigned pos){
 static const struct ksl_io io={.tap=tap,.action=action,.mods=effective_mods,.pause=pause_tap,.replay=replay,.hand=hand};
 #include "locales/repeat_port.inc"
 static void init(void){if(initialized)return;const uint8_t *saved=ksm_locale_record();ksl_transaction_init(&transaction,saved);if(!saved)ksl_stock(transaction.active);ksl_runtime_init(&runtime,transaction.active);initialized=true;}
+bool ksl_qmk_lighting_awake(void){init();return ksl_lighting_awake(transaction.active,last_input_activity_elapsed(),true);}
 uint16_t ksl_qmk_binding(uint16_t code,uint8_t layer,uint8_t row,uint8_t col){
     init();
     if(layer>=DYNAMIC_KEYMAP_LAYER_COUNT||row>=MATRIX_ROWS||col>=MATRIX_COLS)return 0;
@@ -96,6 +98,7 @@ bool ksl_qmk_code(uint16_t code,bool down){
     ksl_event(&runtime,transaction.active,0x10000U+code,code,down,now,get_mods(),host_keyboard_led_state().caps_lock,&io);return true;
 }
 bool ksl_qmk_record(uint16_t code,keyrecord_t *record){
+    init();if(rgb_action(code,record->event.pressed))return false;
     if(bypass&&!ksl_supported(code))return true;
     init();clock_update();runtime.guarded=true;
     unsigned pos=record->event.key.row*MATRIX_COLS+record->event.key.col;
@@ -104,6 +107,7 @@ bool ksl_qmk_record(uint16_t code,keyrecord_t *record){
 }
 static bool persist(const uint8_t *record){return ksm_save_locale(record);}
 void ksl_qmk_task(void){
+    rgb_task();
     init();clock_update();
     bool guarded=false;
     for(unsigned row=0;row<MATRIX_ROWS;row++){
