@@ -68,8 +68,8 @@ bool ksr_slot_valid(const uint8_t *s, uint16_t layout, uint8_t leds) {
         s[5] != KSR_HEADER_SIZE || ksr_get16(s + 6) != layout ||
         s[8] != KSR_LAYERS || s[9] != leds || leds > KSR_MAX_LEDS || !leds || s[16] > 1 ||
         ksr_crc32(s, 28) != ksr_get32(s + 28)) return false;
-    unsigned length = s[4] == 1 ? KSR_RGB_LENGTH(leds) : (s[4] == 2 ? KSR_RGB_LENGTH(leds) + leds * 4u : KSR_LENGTH(leds));
-    unsigned commit = s[4] == KSR_STORAGE_VERSION ? KSR_COMMIT_OFFSET : KSR_LEGACY_COMMIT_OFFSET;
+    unsigned length = s[4] == 1 ? KSR_RGB_LENGTH(leds) : (s[4] == 2 ? KSR_RGB_LENGTH(leds) + leds * 4u : (s[4] == 3 ? KSR_RGB_LENGTH(leds) + KSR_LAYERS * leds * 4u : KSR_LENGTH(leds)));
+    unsigned commit = s[4] >= 3 ? KSR_COMMIT_OFFSET : KSR_LEGACY_COMMIT_OFFSET;
     if (ksr_get16(s + 10) != length || ksr_get32(s + commit) != KSR_COMMIT_MAGIC) return false;
     if (s[4] >= 2) {
         const uint8_t *data = s + KSR_HEADER_SIZE;

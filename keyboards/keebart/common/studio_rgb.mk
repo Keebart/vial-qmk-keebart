@@ -4,6 +4,7 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
     OPT_DEFS += -DKEEBART_STUDIO_RGB_ENABLE -DCRT0_EXTRA_CORES_NUMBER=0
     COMMON_VPATH += keyboards/keebart/common
     ifeq ($(strip $(KEYMAP)),studio)
+        OPT_DEFS += -DKEEBART_STUDIO_LAYER_LIGHTING
         MOUSEKEY_ENABLE = yes
         SRC += keyboards/keebart/common/studio_pointer.c keyboards/keebart/common/pointer/pointer.c
         LDFLAGS += -Wl,--wrap=mousekey_on,--wrap=mousekey_off,--wrap=mousekey_task,--wrap=mousekey_clear,--wrap=mousekey_send,--wrap=mousekey_get_report

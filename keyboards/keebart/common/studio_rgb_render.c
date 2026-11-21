@@ -28,20 +28,33 @@ void ksr_platform_mode_changed(uint8_t previous, uint8_t current) {
 bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     bool slave = !is_keyboard_master();
     if (slave) split_shared_memory_lock();
+    uint8_t layer = ksr_layer(layer_state, default_layer_state);
+#ifdef KEEBART_STUDIO_LAYER_LIGHTING
+    bool per_key = ksr.mode && (layer >= KSR_LAYERS ||
+        !(ksr_get16(ksr.active + KSR_LENGTH(ksr.leds) - 2) & (1u << layer)));
+    static bool previous_per_key;
+    if (per_key != previous_per_key) {
+        rgb_matrix_request_reinit();
+        previous_per_key = per_key;
+    }
+#else
+    bool per_key = ksr.mode;
+#endif
     bool user_result = true;
-    if (!ksr.mode) user_result = rgb_matrix_indicators_advanced_user(led_min, led_max);
+    if (!per_key) user_result = rgb_matrix_indicators_advanced_user(led_min, led_max);
     // Underlying effects need not iterate (Digital Rain finishes at iter=0).
     // Their advanced-indicator range can even be empty on the right half.
     // Overwrite our entire physical half on every call, hence before any flush.
     const uint8_t split[] = RGB_MATRIX_SPLIT;
     uint8_t first = is_keyboard_left() ? 0 : split[0];
     uint8_t end = is_keyboard_left() ? split[0] : RGB_MATRIX_LED_COUNT;
-    uint8_t layer = ksr_layer(layer_state, default_layer_state);
     bool enabled = rgb_matrix_is_enabled() && !rgb_matrix_get_suspend_state();
 #ifdef KEEBART_STUDIO_LOCALES
     extern bool ksl_qmk_lighting_awake(void);
     enabled = enabled && ksl_qmk_lighting_awake();
 #endif
+    extern uint8_t ksl_qmk_lighting_factor(void);
+    uint8_t factor=ksl_qmk_lighting_factor();
     bool palette_enabled = enabled && layer < KSR_LAYERS;
     uint8_t locks = host_keyboard_leds();
     bool indicators = false;
@@ -49,12 +62,12 @@ bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     if (brightness > RGB_MATRIX_MAXIMUM_BRIGHTNESS) brightness = RGB_MATRIX_MAXIMUM_BRIGHTNESS;
     for (uint8_t led = first; led < end; led++) {
         const uint8_t *rgb = ksr.active + ((unsigned)(layer < KSR_LAYERS ? layer : 0) * RGB_MATRIX_LED_COUNT + led) * 3;
-        if (ksr.mode) rgb_matrix_set_color(led, palette_enabled ? ksr_scale(rgb[0], brightness) : 0, palette_enabled ? ksr_scale(rgb[1], brightness) : 0, palette_enabled ? ksr_scale(rgb[2], brightness) : 0);
+        if (per_key) rgb_matrix_set_color(led, palette_enabled ? ksr_scale(rgb[0], brightness) : 0, palette_enabled ? ksr_scale(rgb[1], brightness) : 0, palette_enabled ? ksr_scale(rgb[2], brightness) : 0);
         const uint8_t *indicator = ksr.active + KSR_RGB_LENGTH(RGB_MATRIX_LED_COUNT) + ((unsigned)(layer < KSR_LAYERS ? layer : 0) * RGB_MATRIX_LED_COUNT + led) * 4;
         painting_overlay = true;
-        rgb_matrix_set_color(led, enabled && brightness ? base_colors[led][0] : 0,
-                                  enabled && brightness ? base_colors[led][1] : 0,
-                                  enabled && brightness ? base_colors[led][2] : 0);
+        rgb_matrix_set_color(led, enabled && brightness ? ksr_scale(base_colors[led][0],factor) : 0,
+                                  enabled && brightness ? ksr_scale(base_colors[led][1],factor) : 0,
+                                  enabled && brightness ? ksr_scale(base_colors[led][2],factor) : 0);
         painting_overlay = false;
         if (layer < KSR_LAYERS && indicator[0]) {
             indicators = true;
@@ -63,12 +76,12 @@ bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
             bool visible = enabled && brightness;
             painting_overlay = true;
             rgb_matrix_set_color(led,
-                on ? ksr_scale(indicator[1], brightness) : (visible ? base[0] : 0),
-                on ? ksr_scale(indicator[2], brightness) : (visible ? base[1] : 0),
-                on ? ksr_scale(indicator[3], brightness) : (visible ? base[2] : 0));
+                on ? ksr_scale(ksr_scale(indicator[1], brightness),factor) : (visible ? ksr_scale(base[0],factor) : 0),
+                on ? ksr_scale(ksr_scale(indicator[2], brightness),factor) : (visible ? ksr_scale(base[1],factor) : 0),
+                on ? ksr_scale(ksr_scale(indicator[3], brightness),factor) : (visible ? ksr_scale(base[2],factor) : 0));
             painting_overlay = false;
         }
     }
     if (slave) split_shared_memory_unlock();
-    return ksr.mode || indicators ? false : user_result;
+    return per_key || indicators ? false : user_result;
 }
