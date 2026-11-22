@@ -1,0 +1,294 @@
+// Original Keebart vial_oled presentation, with Studio telemetry and optional hardware.
+#if KSR_LAYOUT_ID == 0x0004
+#include "corne_choc_pro_bitmaps.h"
+#else
+#include "sofle_choc_pro_bitmaps.h"
+#endif
+static const uint8_t OLED_WIDTH = OLED_DISPLAY_HEIGHT;
+static const uint16_t SPLASH_DURATION_MS = 2500;
+
+static const char PROGMEM QMK_LOGO_1[] = {
+    0x81, 0x82, 0x83, 0x84, 0x00
+};
+static const char PROGMEM QMK_LOGO_2[] = {
+    0xA1, 0xA2, 0xA3, 0xA4, 0x00
+};
+static const char PROGMEM QMK_LOGO_3[] = {
+    0xC1, 0xC2, 0xC3, 0xC4, 0x00
+};
+
+#include "oled_telemetry.inc"
+
+static bool g_oled_init_done = false;
+static uint8_t g_oled_max_char;
+static uint8_t g_oled_max_line;
+static bool g_splash_active = true;
+static bool g_splash_rendered = false;
+static uint32_t g_splash_start_ms = 0;
+static inline pin_t get_charge_pump_enable_pin(void) {
+#if KSR_LAYOUT_ID == 0x0004
+    return is_keyboard_left() ? GP5 : GP25;
+#else
+    return GP20;
+#endif
+}
+
+void oled_blit_16x16_P(const char *icon, uint8_t x, uint8_t page) {
+    for (uint8_t i = 0; i < 16; i++) {
+        char top = pgm_read_byte(&icon[i]);         // column i, top 8 pixels
+        char bot = pgm_read_byte(&icon[16 + i]);    // column i, bottom 8 pixels
+
+        oled_write_raw_byte(top, page       * OLED_WIDTH + x + i);
+        oled_write_raw_byte(bot, (page + 1) * OLED_WIDTH + x + i);
+    }
+}
+
+void oled_blit_24x24_P(const char *icon, uint8_t x, uint8_t page) {
+    for (uint8_t i = 0; i < 24; i++) {
+        char top = pgm_read_byte(&icon[i]);         // column i, top 8 pixels
+        char mid = pgm_read_byte(&icon[24 + i]);    // column i, middle 8 pixels
+        char bot = pgm_read_byte(&icon[48 + i]);    // column i, bottom 8 pixels
+
+        oled_write_raw_byte(top, page       * OLED_WIDTH + x + i);
+        oled_write_raw_byte(mid, (page + 1) * OLED_WIDTH + x + i);
+        oled_write_raw_byte(bot, (page + 2) * OLED_WIDTH + x + i);
+    }
+}
+
+uint8_t round_percentage(float x) {
+    float f = x + 0.5f;
+    uint8_t r = (uint8_t)f;
+    if ((f - (float)r) == 0.0f && (r & 1)) {
+        r--; // round half to even
+    }
+    return r;
+}
+
+void oled_print_right_aligned(const char *text, const uint8_t width) {
+    uint8_t len = strlen(text);
+    uint8_t pad = (len < width) ? (width - len) : 0;
+    for (uint8_t i = 0; i < pad; i++) {
+        oled_write_P(PSTR(" "), false);
+    }
+    oled_write(text, false);
+}
+
+extern void ksl_qmk_layer_name(unsigned, char *, size_t);
+void print_current_layer(uint8_t row) {
+    char name[129], label[33], window[11];
+    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+    ksl_qmk_layer_name(layer, name, sizeof(name));
+    if (!name[0]) snprintf(name, sizeof(name), "Layer %u", layer);
+    // QMK's original OLED font is single-byte. Consume UTF-8 scalars together
+    // so unsupported glyphs cannot accidentally draw the font's status icons.
+    unsigned len = 0;
+    for (unsigned i = 0; name[i] && len < sizeof(label)-1;) {
+        unsigned char c = name[i++];
+        if (c < 128) label[len++] = c;
+        else {
+            while (((unsigned char)name[i] & 0xc0) == 0x80) i++;
+            label[len++] = '?';
+        }
+    }
+    label[len] = 0;
+    static char previous[33];
+    static uint32_t changed;
+    if (strcmp(previous, label)) { strcpy(previous, label); changed = timer_read32(); }
+    unsigned width = g_oled_max_char < 10 ? g_oled_max_char : 10;
+    unsigned offset = 0;
+    uint32_t elapsed = timer_elapsed32(changed);
+    if (len > width && elapsed > 1200) offset = ((elapsed-1200)/350) % (len+3);
+    if (len > width) {
+        for (unsigned i = 0; i < width; i++) { unsigned at=(offset+i)%(len+3); window[i]=at<len?label[at]:' '; }
+        window[width]=0;
+    }
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(len > width ? window : label, width);
+}
+
+void print_uptime(uint8_t row) {
+    uint32_t time_ms = g_display.uptime;
+    uint32_t total_min = time_ms / 60000u;
+    uint32_t hours = total_min / 60u;
+    uint32_t minutes = total_min % 60u;
+    if (hours > 999u) {
+        hours = 999u;
+        minutes = 59u;
+    }
+
+    // TODO: consider remove snprintf
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%3luh%02lum", (unsigned long)hours, (unsigned long)minutes);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void print_wpm(uint8_t row) {
+    uint16_t wpm = (uint16_t)g_display.wpm * 10;
+    uint16_t wpm_int = wpm / 10u;
+    uint16_t wpm_frac = wpm % 10u;
+
+    // TODO: consider remove snprintf
+    char buf[11];
+    snprintf(buf, sizeof(buf), "%3u.%1u WPM", wpm_int, wpm_frac);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void print_balance(uint8_t row, uint8_t pct) {
+    // TODO: consider remove snprintf
+    char buf[6];
+    snprintf(buf, sizeof(buf), "%3u %%", pct);
+    oled_set_cursor(0, row);
+    oled_print_right_aligned(buf, g_oled_max_char);
+}
+
+void render_splash(void) {
+    if (g_splash_rendered) {
+        return;
+    }
+    oled_clear();
+    oled_set_cursor(0, 0);
+    oled_write_raw_P(STARTUP_BITMAP, sizeof(STARTUP_BITMAP));
+    g_splash_rendered = true;
+}
+
+bool __real_oled_init(oled_rotation_t rotation);
+bool __wrap_oled_init(oled_rotation_t rotation) {
+    if (!display_present()) return false;
+    pin_t pin = get_charge_pump_enable_pin();
+    gpio_set_pin_output(pin);
+    gpio_write_pin_low(pin);
+    wait_ms(5);
+    return __real_oled_init(rotation);
+}
+
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    (void)rotation;
+#if KSR_LAYOUT_ID == 0x0004
+    return OLED_ROTATION_90;
+#else
+    return OLED_ROTATION_270;
+#endif
+}
+
+bool oled_post_init(void) {
+    if (!g_oled_init_done) {
+        // set OLED size for characters
+        g_oled_max_char = oled_max_chars();
+        g_oled_max_line = oled_max_lines();
+
+        // enable charge pump
+        pin_t dsp_pen_pin = get_charge_pump_enable_pin();
+        gpio_write_pin_high(dsp_pen_pin);
+        wait_ms(20);
+        oled_clear();
+
+        // start timer for splash screen
+        g_splash_start_ms = timer_read32();
+        g_splash_active = true;
+
+        g_oled_init_done = true;
+    }
+    return false;
+}
+
+bool oled_task_user(void) {
+    if (!display_present()) return false;
+    ksh_oled_snapshot();
+    // perform custom initialisation once
+    oled_post_init();
+
+    // render splash screen
+    if (g_splash_active) {
+        if (timer_elapsed32(g_splash_start_ms) > SPLASH_DURATION_MS) {
+            g_splash_active = false;
+            oled_clear();
+
+        } else {
+            render_splash();
+        }
+        return false;
+    }
+
+    uint32_t local_presses_left = g_display.left;
+    uint32_t local_presses_right = g_display.right;
+    if (!g_display.awake) { oled_off(); return false; }
+    if (!is_oled_on()) oled_on();
+
+    uint32_t total = local_presses_left + local_presses_right;
+    if (total == 0) {
+        total = 1;  // avoid div by 0
+    }
+    uint8_t pct_left = round_percentage((100.0f * local_presses_left) / total);
+    uint8_t pct_right = round_percentage((100.0f * local_presses_right) / total);
+
+    if (is_keyboard_left()) {
+        // Layer state
+        oled_set_cursor(0, 0);
+        oled_write_P(PSTR("Layer:"), false);
+        print_current_layer(1);
+
+        // Lock status
+        led_t led_state = host_keyboard_led_state();
+        if (led_state.num_lock) {
+            oled_blit_16x16_P(NUM_LOCK_BITMAP, 0, 3);
+        } else {
+            oled_blit_16x16_P(EMPTY_BITMAP, 0, 3);
+        }
+        if (led_state.caps_lock) {
+            oled_blit_16x16_P(CAPS_LOCK_BITMAP, 24, 3);
+        } else {
+            oled_blit_16x16_P(EMPTY_BITMAP, 24, 3);
+        }
+        if (led_state.scroll_lock) {
+            oled_blit_16x16_P(SCROLL_LOCK_BITMAP, 48, 3);
+        } else {
+            oled_blit_16x16_P(EMPTY_BITMAP, 48, 3);
+        }
+
+        // split balance
+        oled_set_cursor(0, 7);
+        oled_write_P(PSTR("Left:"), false);
+        print_balance(8, pct_left);
+
+        // Last key pressed
+        oled_set_cursor(0, 10);
+        oled_write_P(PSTR("Last Key:"), false);
+        ksh_oled_last_key(11);
+
+        // QMK logo
+        oled_set_cursor(0, 13);
+        oled_write_P(QMK_LOGO_1, false);
+        oled_set_cursor(0, 14);
+        oled_write_P(QMK_LOGO_2, false);
+        oled_set_cursor(0, 15);
+        oled_write_P(QMK_LOGO_3, false);
+        oled_set_cursor(7, 15);
+        oled_write_P(PSTR("QMK"), false);
+    } else {
+        // Uptime (only if oled is on)
+        oled_set_cursor(0, 0);
+        oled_write_P(PSTR("Uptime:"), false);
+        print_uptime(1);
+
+        // Typing speed
+        oled_set_cursor(0, 3);
+        oled_write_P(PSTR("Avg Speed"), false);
+        oled_set_cursor(0, 4);
+        oled_write_P(PSTR("(5 s):"), false);
+        print_wpm(5);
+
+        // split balance
+        oled_set_cursor(0, 7);
+        oled_write_P(PSTR("Right:"), false);
+        print_balance(8, pct_right);
+
+        // Keebart logo
+        oled_blit_24x24_P(KEEBART_BITMAP_24x24, 20, 11);
+        oled_set_cursor(2, 15);
+        oled_write_P(PSTR("KEEBART"), false);
+    }
+    return false;
+}
+

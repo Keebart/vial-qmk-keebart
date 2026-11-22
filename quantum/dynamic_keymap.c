@@ -90,6 +90,13 @@ int dynamic_keymap_set_tap_dance(uint8_t index, const vial_tap_dance_entry_t *en
 
 #ifdef VIAL_COMBO_ENABLE
 int dynamic_keymap_get_combo(uint8_t index, vial_combo_entry_t *entry) {
+#ifdef KEEBART_STUDIO_LOCALES
+    if(index >= VIAL_COMBO_ENTRIES && index < 64) {
+        extern bool ksl_qmk_extra_combo(unsigned,uint16_t[5]);
+        uint16_t values[5];ksl_qmk_extra_combo(index - VIAL_COMBO_ENTRIES,values);
+        memcpy(entry->input,values,sizeof(entry->input));entry->output=values[4];return 0;
+    }
+#endif
     return nvm_dynamic_keymap_get_combo(index, entry);
 }
 
@@ -124,6 +131,12 @@ int dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_e
 #else
 #define studio_stock_code(code) (code)
 #endif
+#ifdef KEEBART_STUDIO_PHYSICAL
+#include "physical/physical.h"
+#define studio_stock_key(layer, row, col, code) ksh_compact_key(KSR_LAYOUT_ID, ksh_flags(), (layer), (row) * MATRIX_COLS + (col), studio_stock_code(code))
+#else
+#define studio_stock_key(layer, row, col, code) studio_stock_code(code)
+#endif
 
 void dynamic_keymap_reset(void) {
 #ifdef VIAL_ENABLE
@@ -139,7 +152,7 @@ void dynamic_keymap_reset(void) {
     for (int layer = 0; layer < DYNAMIC_KEYMAP_LAYER_COUNT; layer++) {
         for (int row = 0; row < MATRIX_ROWS; row++) {
             for (int column = 0; column < MATRIX_COLS; column++) {
-                dynamic_keymap_set_keycode(layer, row, column, studio_stock_code(keycode_at_keymap_location_raw(layer, row, column)));
+                dynamic_keymap_set_keycode(layer, row, column, studio_stock_key(layer, row, column, keycode_at_keymap_location_raw(layer, row, column)));
             }
         }
 #ifdef ENCODER_MAP_ENABLE

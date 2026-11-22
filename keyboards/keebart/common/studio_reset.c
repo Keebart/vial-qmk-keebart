@@ -31,6 +31,20 @@ void ksr_reset_handle(const uint8_t *in, uint8_t *out, bool authorized, bool pee
     nonce = id; phase = peer ? RESET_REMOTE : RESET_PROBE; result = KSR_PENDING; started = 0;
     out[6] = KSR_PENDING;
 }
+bool ksr_reset_key_blocked(void) {
+    if (ksr.job || ksr.remote_save || ksr_reset_busy()) return true;
+    if (!ksr.stage.open) return false;
+    return !ksr.stage.valid || ksr.stage.length != ksr.length || ksr.stage.received != ksr.length ||
+           ksr.stage.generation != ksr.active_generation || ksr.stage.mode != ksr.mode ||
+           ksr.stage.crc != ksr.active_crc || memcmp(ksr.stage.data, ksr.active, ksr.length) != 0;
+}
+void ksr_reset_physical(uint32_t id) {
+    if (ksr_reset_key_blocked()) return;
+    ksr.stage.open = false;
+    if (!id || id == nonce) id = nonce + 1;
+    if (!id) id = 1;
+    nonce = id; phase = RESET_PROBE; result = KSR_PENDING; started = 0;
+}
 void ksr_reset_task(uint32_t now) {
     if (!phase) return;
     if (!started) started = now;

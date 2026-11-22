@@ -57,6 +57,10 @@ action_t action_for_key(uint8_t layer, keypos_t key) {
 };
 
 action_t action_for_keycode(uint16_t keycode) {
+#ifdef KEEBART_STUDIO_LOCALES
+    extern bool ksl_qmk_layer_tap(uint16_t);
+    if (ksl_qmk_layer_tap(keycode)) return (action_t){0};
+#endif
     // keycode remapping
     keycode = keycode_config(keycode);
 

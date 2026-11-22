@@ -36,10 +36,11 @@ static bool program(unsigned n,unsigned offset,const uint8_t *page){
 static const struct km_storage storage={read_slot,erase_slot,program};
 static void init(void){if(initialized)return;selected=km_store_select(&storage);if(selected>=0)memcpy(active,read_slot(selected)+12,KM_BYTES);initialized=true;}
 const uint8_t *ksm_name_record(void){init();if(selected<0)return NULL;const uint8_t *p=read_slot(selected)+KM_SLOT_SIZE-KM_PAGE_SIZE;return kn_valid(p,KN_RECORD)?p:NULL;}
-bool ksm_save_name(const uint8_t *p){init();if(staging || !kn_valid(p,KN_RECORD))return false;if(!km_store_save_named(&storage,selected,active,p))return false;selected=selected==0?1:0;return true;}
+bool ksm_save_name(const uint8_t *p){init();if(staging || !kn_valid(p,KN_RECORD))return false;if(!km_store_save_full(&storage,selected,active,p,ksl_qmk_persisted_locale()))return false;selected=selected==0?1:0;ksl_qmk_persisted();return true;}
+uint32_t ksm_locale_generation(void){init();return selected<0?0:km_store_generation(read_slot(selected));}
 const uint8_t *ksm_locale_record(void){init();return selected<0?NULL:read_slot(selected)+KM_LOCALE_OFFSET;}
 bool ksm_save_locale(const uint8_t *p){init();if(staging||vm.active||!ksl_valid(p))return false;if(!km_store_save_full(&storage,selected,active,NULL,p))return false;selected=selected==0?1:0;return true;}
-static uint8_t macro_mods, mod_refs[8];
+static uint8_t mod_refs[8];
 static void emit(void *ctx,uint16_t code,bool down){
     (void)ctx;
     if(ksl_qmk_code(code,down))return;
@@ -51,7 +52,7 @@ static void emit(void *ctx,uint16_t code,bool down){
         if(mods & (1<<i)){if(down)mod_refs[i]++;else if(mod_refs[i])mod_refs[i]--;}
         if(mod_refs[i])next |= 1<<i;
     }
-    del_weak_mods(macro_mods & ~next);add_weak_mods(next);macro_mods=next;
+    ksl_qmk_macro_mods(next);
     if(key){if(down)register_code(key);else unregister_code(key);}else send_keyboard_report();
 }
 void ksm_read(uint16_t offset,uint16_t size,uint8_t *out){init();if((uint32_t)offset+size<=KM_BYTES)memcpy(out,(staging?staged:active)+offset,size);else memset(out,0,size);}
@@ -64,7 +65,7 @@ void ksm_write(uint16_t offset,uint16_t size,const uint8_t *data){
     memcpy(staged+offset,data,size);
     if(offset+size==KM_BYTES && !staged[KM_BYTES-1]){
         if(!vial_unlocked && !ks_restore_matches(staged,KM_BYTES)){staging=false;return;}
-        if(km_store_save(&storage,selected,staged)){selected=selected==0?1:0;memcpy(active,staged,KM_BYTES);ks_restore_consumed();}
+        if(km_store_save_full(&storage,selected,staged,NULL,ksl_qmk_persisted_locale())){selected=selected==0?1:0;memcpy(active,staged,KM_BYTES);ksl_qmk_persisted();ks_restore_consumed();}
         staging=false;
     }
 }
@@ -78,6 +79,6 @@ void ksm_task(void){
     if(staging && (uint32_t)(now-stage_at)>10000)ksm_abort();
     if(usb_device_state_get_configure_state()!=USB_DEVICE_STATE_CONFIGURED){km_cancel(&vm,emit,NULL);ksm_abort();}else km_tick(&vm,clock_ms,emit,NULL);
 }
-bool ksm_key(uint16_t code,bool down){if(code==KC_ESC && down && vm.active){km_cancel(&vm,emit,NULL);return false;}return true;}
+bool ksm_key(uint16_t code,bool down){if(code==KC_ESC && down && (vm.active || vm.held_count)){km_cancel(&vm,emit,NULL);return false;}return true;}
 
 bool ksm_running(void){return vm.active;}

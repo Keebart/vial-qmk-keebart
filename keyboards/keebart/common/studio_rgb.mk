@@ -4,6 +4,23 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
     OPT_DEFS += -DKEEBART_STUDIO_RGB_ENABLE -DCRT0_EXTRA_CORES_NUMBER=0
     COMMON_VPATH += keyboards/keebart/common
     ifeq ($(strip $(KEYMAP)),studio)
+        NKRO_ENABLE = yes
+        OPT_DEFS += -DKEEBART_STUDIO_PHYSICAL
+        SRC += keyboards/keebart/common/physical/physical.c keyboards/keebart/common/physical/compact.c keyboards/keebart/common/studio_physical.c
+        SRC += keyboards/keebart/common/studio_diagnostics.c keyboards/keebart/common/studio_led_test.c
+        SRC += keyboards/keebart/common/studio_rgb_color.c
+        LDFLAGS += -Wl,--wrap=chSysHalt
+        ifneq ($(filter keebart/corne_choc_pro/% keebart/corne_mx_pro/%,$(KEYBOARD)),)
+            LDFLAGS += -Wl,--wrap=ws2812_flush
+        endif
+        ifneq ($(filter keebart/corne_choc_pro/% keebart/sofle_choc_pro,$(KEYBOARD)),)
+            OLED_ENABLE = yes
+            OLED_TRANSPORT = i2c
+            WPM_ENABLE = yes
+            KEYCODE_STRING_ENABLE = yes
+            OPT_DEFS += -DOLED_TIMEOUT=0 -DOLED_FADE_OUT -DSPLIT_TRANSACTION_IDS_USER=KSH_OLED_SYNC
+            LDFLAGS += -Wl,--wrap=oled_init
+        endif
         OPT_DEFS += -DKEEBART_STUDIO_LAYER_LIGHTING
         MOUSEKEY_ENABLE = yes
         SRC += keyboards/keebart/common/studio_pointer.c keyboards/keebart/common/pointer/pointer.c

@@ -396,6 +396,10 @@ void rgb_matrix_task(void) {
                              false;
 
     uint8_t effect = suspend_backlight || !rgb_matrix_config.enable ? 0 : rgb_matrix_config.mode;
+#ifdef KEEBART_STUDIO_TEST_ENABLE
+    extern uint8_t ksr_led_test_channel(void);
+    if (ksr_led_test_channel()) effect = rgb_matrix_config.mode ? rgb_matrix_config.mode : 1;
+#endif
 
     switch (rgb_task_state) {
         case STARTING:

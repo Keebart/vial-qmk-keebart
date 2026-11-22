@@ -15,7 +15,7 @@ static void clock_update(void){uint32_t current=timer_read32();now+=(uint32_t)(c
 static void emit(void *ctx,unsigned position,uint16_t code,enum kd_action action){
     (void)ctx;(void)position;
     if(action==KD_UP)vial_keycode_up(code);
-    else {vial_keycode_down(code);if(action==KD_TAP){wait_ms(5);vial_keycode_up(code);}}
+    else {vial_keycode_down(code);if(action==KD_TAP){extern uint16_t ksl_qmk_tap_delay(uint16_t);wait_ms(ksl_qmk_tap_delay(code));vial_keycode_up(code);}}
 }
 void kst_observe(uint16_t code,keyrecord_t *record){
     if(record->event.key.row==VIAL_MATRIX_MAGIC)return;

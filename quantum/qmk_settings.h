@@ -242,3 +242,18 @@ static inline void qs_wait_ms(uint16_t timer) {
 #else
     #define qs_wait_ms wait_ms
 #endif
+
+#ifdef KEEBART_STUDIO_LOCALES
+/* Studio global tap/hold timing */
+uint16_t ksl_qmk_tap_delay(uint16_t);
+uint16_t ksl_qmk_hold_term(void);
+uint8_t ksl_qmk_tapping_toggle(void);
+#undef QS_tap_code_delay
+#undef QS_tap_hold_caps_delay
+#undef QS_tapping_term
+#undef QS_tapping_toggle
+#define QS_tap_code_delay ksl_qmk_tap_delay(0)
+#define QS_tap_hold_caps_delay ksl_qmk_tap_delay(57)
+#define QS_tapping_term ksl_qmk_hold_term()
+#define QS_tapping_toggle ksl_qmk_tapping_toggle()
+#endif

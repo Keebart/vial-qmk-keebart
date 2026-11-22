@@ -7,3 +7,5 @@ bool ksr_reset_erasing(void);
 void ksr_reset_handle(const uint8_t *in, uint8_t *out, bool authorized, bool peer);
 void ksr_reset_task(uint32_t now);
 enum ksr_status ksr_platform_factory_reset(void);
+bool ksr_reset_key_blocked(void);
+void ksr_reset_physical(uint32_t id);

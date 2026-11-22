@@ -1,3 +1,6 @@
+#ifdef KEEBART_STUDIO_IDENTITY
+#include "studio_identity.h"
+#endif
 #include "release.h"
 #ifdef KEEBART_STUDIO_LOCALES
 #include "locales/qmk.h"
@@ -22,13 +25,25 @@
 #include "synchronization_util.h"
 #include "studio_rgb.h"
 #include "studio_reset.h"
+#include "locales/reset_key.h"
+static struct ks_reset_key physical_reset_key;
+static bool physical_reset_all_released(void) {
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++)
+        for (uint8_t col = 0; col < MATRIX_COLS; col++)
+            if (matrix_is_on(row,col)) return false;
+    return true;
+}
 #ifdef KEEBART_STUDIO_MACROS
 #include "studio_macro.h"
 void ksn_task(void);
 void ksn_handle(uint8_t *,bool);
+void kdg_qmk_init(void);
+void kdg_qmk_task(void);
+void kdg_qmk_handle(uint8_t[32],bool);
 #endif
 #ifdef KEEBART_STUDIO_TEST_ENABLE
 #include "studio_test.h"
+void ksr_led_test_handle(uint8_t[32],bool);
 #endif
 #include "wear_leveling_rp2040_flash_config.h"
 #include <string.h>
@@ -179,9 +194,12 @@ static void release_reply(uint8_t *data, bool internal) {
         request[6]=0;
         uint8_t response[32];
         if(!ksr_platform_rpc(request,response) || memcmp(response,request,6) || response[6]) {data[6]=KSR_PEER;return;}
-        memcpy(data+7,response+7,12);
+        memcpy(data+7,response+7,25);
     } else {
         keebart_release(data+7,KSR_LAYOUT_ID,is_keyboard_left()?1:2,KSR_STORAGE_VERSION);
+#ifdef KEEBART_STUDIO_IDENTITY
+        ksid_reply(data);
+#endif
     }
 }
 static void peer_callback(uint8_t in_len, const void *in, uint8_t out_len, void *out) {
@@ -189,6 +207,10 @@ static void peer_callback(uint8_t in_len, const void *in, uint8_t out_len, void 
 #ifdef KEEBART_STUDIO_MACROS
     if (((const uint8_t *)in)[4] == 0xe2) {memcpy(out,in,32);ksl_qmk_handle(out,true);return;}
     if (((const uint8_t *)in)[4] == 0xe1) {memcpy(out,in,32);ksn_handle(out,true);return;}
+    if (((const uint8_t *)in)[4] == 0xf1) {memcpy(out,in,32);kdg_qmk_handle(out,true);return;}
+#endif
+#ifdef KEEBART_STUDIO_TEST_ENABLE
+    if (((const uint8_t *)in)[4] == 0xe3) {memcpy(out,in,32);ksr_led_test_handle(out,true);return;}
 #endif
     if (((const uint8_t *)in)[4] == 0xf0) {memcpy(out,in,32);release_reply(out,true);return;}
     // Internal split link only. The USB-facing master checks physical Vial unlock.
@@ -196,18 +218,25 @@ static void peer_callback(uint8_t in_len, const void *in, uint8_t out_len, void 
     else ksr_handle(in, out, true, true);
 }
 void keyboard_post_init_kb(void) {
+#ifdef KEEBART_STUDIO_IDENTITY
+    ksid_init();
+#endif
     selected = ksr_select_slot(slot(0), slot(1), KSR_LAYOUT_ID, RGB_MATRIX_LED_COUNT);
     if (selected < 0) {
         int old = ksr_select_slot(legacy_slot(0), legacy_slot(1), KSR_LAYOUT_ID, RGB_MATRIX_LED_COUNT);
         if (old >= 0) selected = old + 2;
     }
     ksr_init(KSR_LAYOUT_ID, RGB_MATRIX_LED_COUNT);
+#ifdef KEEBART_STUDIO_MACROS
+    kdg_qmk_init();
+#endif
     transaction_register_rpc(KSR_SYNC, peer_callback);
     keyboard_post_init_user();
 }
 void housekeeping_task_kb(void) {
     uint32_t now = timer_read32();
 #ifdef KEEBART_STUDIO_MACROS
+    kdg_qmk_task();
     if (is_keyboard_master()) { ksm_task(); kst_task(); }
 #endif
     if (is_keyboard_master() && !boot_sync_started && now > 1500) {
@@ -222,6 +251,13 @@ void housekeeping_task_kb(void) {
     ksn_task();
     ksl_qmk_task();
 #endif
+    if (is_keyboard_master()) {
+        bool blocked=vial_unlock_in_progress || ksr_reset_key_blocked();
+        if (ks_reset_key_take(&physical_reset_key, now, physical_reset_all_released(), blocked)) {
+            vial_unlocked = 0;
+            ksr_reset_physical(now);
+        }
+    }
     ksr_reset_task(now);
     ksr_task(now);
     if (slave) split_shared_memory_unlock();
@@ -229,6 +265,10 @@ void housekeeping_task_kb(void) {
 #ifdef KEEBART_STUDIO_TEST_ENABLE
 // The master processes both halves' encoder-map events, even for non-HID actions.
 bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
+#if defined(OLED_ENABLE) && (KSR_LAYOUT_ID == 0x0004 || KSR_LAYOUT_ID == 0x0005)
+    extern void ksh_oled_record(uint16_t, keyrecord_t *);
+    ksh_oled_record(keycode, record);
+#endif
     (void)keycode;
 #ifdef ENCODER_MAP_ENABLE
     if (is_keyboard_master() && record->event.pressed && IS_ENCODEREVENT(record->event))
@@ -236,6 +276,12 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
 #else
     (void)record;
 #endif
+    if (is_keyboard_master() && IS_KEYEVENT(record->event)) {
+        bool blocked=vial_unlock_in_progress || ksr_reset_key_blocked();
+        unsigned pos = (unsigned)record->event.key.row * MATRIX_COLS + record->event.key.col;
+        ks_reset_key_event(&physical_reset_key, pos, keycode, record->event.pressed, timer_read32(), blocked);
+    }
+    if(keycode==KS_RESET_KEY)return false;
 #ifdef KEEBART_STUDIO_MACROS
     kst_observe(keycode,record);
     if (!ksm_key(keycode, record->event.pressed)) return false;
@@ -244,13 +290,17 @@ bool pre_process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 #endif
 #ifdef KEEBART_STUDIO_TAP_DANCE
-bool process_record_user(uint16_t keycode,keyrecord_t *record){return kst_key(keycode,record);}
+bool process_record_user(uint16_t keycode,keyrecord_t *record){return keycode!=KS_RESET_KEY && kst_key(keycode,record);}
 #endif
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     if (length != 32 || data[0] != KSR_COMMAND) { if (length) data[0] = 0xFF; return; }
 #ifdef KEEBART_STUDIO_MACROS
     if (data[4] == 0xe2) {ksl_qmk_handle(data,false);return;}
     if (data[4] == 0xe1) {ksn_handle(data,false);return;}
+    if (data[4] == 0xf1) {kdg_qmk_handle(data,false);return;}
+#endif
+#ifdef KEEBART_STUDIO_TEST_ENABLE
+    if (data[4] == 0xe3) {ksr_led_test_handle(data,false);return;}
 #endif
     if (data[4] == 0xf0) {release_reply(data,false);return;}
     // This narrowly namespaced handler changes only LED palettes/mode.

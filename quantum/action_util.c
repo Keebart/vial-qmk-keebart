@@ -264,6 +264,10 @@ if (QS_oneshot_timeout > 0) {
     mods |= weak_override_mods;
 #endif
 
+#ifdef KEEBART_STUDIO_LOCALES
+    extern uint8_t ksl_qmk_report_mods(uint8_t);
+    mods = ksl_qmk_report_mods(mods);
+#endif
     return mods;
 }
 

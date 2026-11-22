@@ -26,6 +26,27 @@ void ksr_platform_mode_changed(uint8_t previous, uint8_t current) {
 }
 
 bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
+    // Underlying effects need not iterate (Digital Rain finishes at iter=0).
+    // Their advanced-indicator range can even be empty on the right half.
+    // Overwrite our entire physical half on every call, hence before any flush.
+    const uint8_t split[] = RGB_MATRIX_SPLIT;
+    uint8_t first = is_keyboard_left() ? 0 : split[0];
+    uint8_t end = is_keyboard_left() ? split[0] : RGB_MATRIX_LED_COUNT;
+#ifdef KEEBART_STUDIO_TEST_ENABLE
+    // Acquire/release the non-recursive split mutex inside ksr_led_test_channel()
+    // before locking it for ksr.active below; nesting would deadlock the slave half.
+    extern uint8_t ksr_led_test_channel(void);
+    uint8_t test_channel = ksr_led_test_channel();
+    if (test_channel) {
+        uint8_t r = test_channel == 1 ? RGB_MATRIX_MAXIMUM_BRIGHTNESS : 0;
+        uint8_t g = test_channel == 2 ? RGB_MATRIX_MAXIMUM_BRIGHTNESS : 0;
+        uint8_t b = test_channel == 3 ? RGB_MATRIX_MAXIMUM_BRIGHTNESS : 0;
+        painting_overlay = true;
+        for (uint8_t led = first; led < end; led++) rgb_matrix_set_color(led, r, g, b);
+        painting_overlay = false;
+        return false;
+    }
+#endif
     bool slave = !is_keyboard_master();
     if (slave) split_shared_memory_lock();
     uint8_t layer = ksr_layer(layer_state, default_layer_state);
@@ -42,19 +63,15 @@ bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
 #endif
     bool user_result = true;
     if (!per_key) user_result = rgb_matrix_indicators_advanced_user(led_min, led_max);
-    // Underlying effects need not iterate (Digital Rain finishes at iter=0).
-    // Their advanced-indicator range can even be empty on the right half.
-    // Overwrite our entire physical half on every call, hence before any flush.
-    const uint8_t split[] = RGB_MATRIX_SPLIT;
-    uint8_t first = is_keyboard_left() ? 0 : split[0];
-    uint8_t end = is_keyboard_left() ? split[0] : RGB_MATRIX_LED_COUNT;
     bool enabled = rgb_matrix_is_enabled() && !rgb_matrix_get_suspend_state();
 #ifdef KEEBART_STUDIO_LOCALES
     extern bool ksl_qmk_lighting_awake(void);
     enabled = enabled && ksl_qmk_lighting_awake();
-#endif
     extern uint8_t ksl_qmk_lighting_factor(void);
     uint8_t factor=ksl_qmk_lighting_factor();
+#else
+    uint8_t factor=255;
+#endif
     bool palette_enabled = enabled && layer < KSR_LAYERS;
     uint8_t locks = host_keyboard_leds();
     bool indicators = false;

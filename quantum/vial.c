@@ -44,6 +44,14 @@ static uint8_t vial_unlock_combo_cols[] = VIAL_UNLOCK_COMBO_COLS;
 #define VIAL_UNLOCK_NUM_KEYS (sizeof(vial_unlock_combo_rows)/sizeof(vial_unlock_combo_rows[0]))
 _Static_assert(VIAL_UNLOCK_NUM_KEYS < 15, "Max 15 unlock keys");
 _Static_assert(sizeof(vial_unlock_combo_rows) == sizeof(vial_unlock_combo_cols), "The number of unlock cols and rows should be the same");
+static uint8_t studio_unlock_col(size_t i) {
+    uint8_t col = vial_unlock_combo_cols[i];
+#if defined(KEEBART_STUDIO_PHYSICAL) && (KSR_LAYOUT_ID == 0x0004 || KSR_LAYOUT_ID == 0x0204)
+    extern uint8_t ksh_flags(void);
+    if (ksh_flags() & 1u) col++;
+#endif
+    return col;
+}
 #endif
 
 #include "qmk_settings.h"
@@ -156,7 +164,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             /* Rest of the message are keys in the matrix that should be held to unlock the board */
             for (size_t i = 0; i < VIAL_UNLOCK_NUM_KEYS; ++i) {
                 msg[2 + i * 2] = vial_unlock_combo_rows[i];
-                msg[2 + i * 2 + 1] = vial_unlock_combo_cols[i];
+                msg[2 + i * 2 + 1] = studio_unlock_col(i);
             }
 #endif
             break;
@@ -172,7 +180,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             if (vial_unlock_in_progress) {
                 int holding = 1;
                 for (size_t i = 0; i < VIAL_UNLOCK_NUM_KEYS; ++i)
-                    holding &= matrix_is_on(vial_unlock_combo_rows[i], vial_unlock_combo_cols[i]);
+                    holding &= matrix_is_on(vial_unlock_combo_rows[i], studio_unlock_col(i));
 
                 if (timer_elapsed(vial_unlock_timer) > 100 && holding) {
                     vial_unlock_timer = timer_read();
@@ -231,7 +239,11 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             case dynamic_vial_get_number_of_entries: {
                 memset(msg, 0, length);
                 msg[0] = VIAL_TAP_DANCE_ENTRIES;
+#ifdef KEEBART_STUDIO_LOCALES
+                msg[1] = 64;
+#else
                 msg[1] = VIAL_COMBO_ENTRIES;
+#endif
                 msg[2] = VIAL_KEY_OVERRIDE_ENTRIES;
                 msg[3] = VIAL_ALT_REPEAT_KEY_ENTRIES;
 
@@ -561,16 +573,24 @@ tap_dance_action_t* tap_dance_get(uint16_t tap_dance_idx) {
 #endif
 
 #ifdef VIAL_COMBO_ENABLE
-combo_t key_combos[VIAL_COMBO_ENTRIES] = { };
-uint16_t key_combos_keys[VIAL_COMBO_ENTRIES][5];
+#ifdef KEEBART_STUDIO_LOCALES
+#define STUDIO_COMBO_ENTRIES 64
+#else
+#define STUDIO_COMBO_ENTRIES VIAL_COMBO_ENTRIES
+#endif
+combo_t key_combos[STUDIO_COMBO_ENTRIES] = { };
+uint16_t key_combos_keys[STUDIO_COMBO_ENTRIES][5];
 
+#ifdef KEEBART_STUDIO_LOCALES
+void vial_reload_studio_combos(void) { reload_combo(); }
+#endif
 static void reload_combo(void) {
     /* initialize with all keys = COMBO_END */
     memset(key_combos_keys, 0, sizeof(key_combos_keys));
     memset(key_combos, 0, sizeof(key_combos));
 
     /* reload from eeprom */
-    for (size_t i = 0; i < VIAL_COMBO_ENTRIES; ++i) {
+    for (size_t i = 0; i < STUDIO_COMBO_ENTRIES; ++i) {
         uint16_t *seq = key_combos_keys[i];
         key_combos[i].keys = seq;
 

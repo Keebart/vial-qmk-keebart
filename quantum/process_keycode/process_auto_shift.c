@@ -502,3 +502,11 @@ void retroshift_swap_times(void) {
     }
 }
 #endif
+
+#ifdef KEEBART_STUDIO_LOCALES
+void ksl_qmk_auto_shift_cancel(void) {
+    autoshift_flags.in_progress = false;
+    autoshift_lastkey = KC_NO;
+    autoshift_flush_shift();
+}
+#endif
