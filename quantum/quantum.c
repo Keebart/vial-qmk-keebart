@@ -404,11 +404,20 @@ bool process_record_quantum_helper(uint16_t keycode, keyrecord_t *record) {
 #if (defined(AUDIO_ENABLE) || (defined(MIDI_ENABLE) && defined(MIDI_BASIC))) && !defined(NO_MUSIC_MODE)
             process_music(keycode, record) &&
 #endif
-#ifdef CAPS_WORD_ENABLE
-            process_caps_word(keycode, record) &&
-#endif
-#ifdef KEY_OVERRIDE_ENABLE
+#ifdef KEEBART_STUDIO_LOCALES
+#    ifdef KEY_OVERRIDE_ENABLE
             process_key_override(keycode, record) &&
+#    endif
+#    ifdef CAPS_WORD_ENABLE
+            process_caps_word(keycode, record) &&
+#    endif
+#else
+#    ifdef CAPS_WORD_ENABLE
+            process_caps_word(keycode, record) &&
+#    endif
+#    ifdef KEY_OVERRIDE_ENABLE
+            process_key_override(keycode, record) &&
+#    endif
 #endif
 #ifdef TAP_DANCE_ENABLE
             process_tap_dance(keycode, record) &&
