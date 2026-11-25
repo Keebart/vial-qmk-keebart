@@ -10,6 +10,7 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
         SRC += keyboards/keebart/common/studio_diagnostics.c keyboards/keebart/common/studio_led_test.c
         SRC += keyboards/keebart/common/studio_rgb_color.c
         LDFLAGS += -Wl,--wrap=chSysHalt
+        LDFLAGS += -Wl,--wrap=transport_master_if_connected
         ifneq ($(filter keebart/corne_choc_pro/% keebart/corne_mx_pro/%,$(KEYBOARD)),)
             LDFLAGS += -Wl,--wrap=ws2812_flush
         endif
@@ -19,7 +20,8 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
             WPM_ENABLE = yes
             KEYCODE_STRING_ENABLE = yes
             OPT_DEFS += -DOLED_TIMEOUT=0 -DOLED_FADE_OUT -DSPLIT_TRANSACTION_IDS_USER=KSH_OLED_SYNC
-            LDFLAGS += -Wl,--wrap=oled_init
+            COMMON_VPATH += keyboards/keebart/common/display
+            LDFLAGS += -Wl,--wrap=oled_init,--wrap=oled_off
         endif
         OPT_DEFS += -DKEEBART_STUDIO_LAYER_LIGHTING
         MOUSEKEY_ENABLE = yes

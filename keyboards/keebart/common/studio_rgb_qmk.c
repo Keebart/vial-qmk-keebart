@@ -232,6 +232,10 @@ void keyboard_post_init_kb(void) {
 #endif
     transaction_register_rpc(KSR_SYNC, peer_callback);
     keyboard_post_init_user();
+#ifdef KEEBART_STUDIO_PHYSICAL
+    extern void studio_transport_ready(void);
+    studio_transport_ready();
+#endif
 }
 void housekeeping_task_kb(void) {
     uint32_t now = timer_read32();
