@@ -29,6 +29,7 @@ void kst_observe(uint16_t code,keyrecord_t *record){
 #ifdef ENCODER_MAP_ENABLE
         if(IS_ENCODEREVENT(record->event))pos=MATRIX_ROWS*MATRIX_COLS+record->event.key.col*2+(record->event.type==ENCODER_CW_EVENT);
 #endif
+        if(record->event.type==COMBO_EVENT)pos=code>=KD_BASE&&code<KD_BASE+KD_COUNT?0x8000U+(code-KD_BASE):0x80ffU;
         kd_input(&engine,pos,0,true,now,entries,KD_COUNT,emit,NULL);
     }
 }
@@ -49,6 +50,7 @@ bool kst_key(uint16_t code,keyrecord_t *record){
 #ifdef ENCODER_MAP_ENABLE
     if(IS_ENCODEREVENT(record->event))pos=MATRIX_ROWS*MATRIX_COLS+record->event.key.col*2+(record->event.type==ENCODER_CW_EVENT);
 #endif
+    if(record->event.type==COMBO_EVENT)pos=code>=KD_BASE&&code<KD_BASE+KD_COUNT?0x8000U+(code-KD_BASE):0x80ffU;
     // Combo buffering must not extend the physical Tap Dance timing window.
     uint16_t age=(uint16_t)(timer_read32()-record->event.time);
     int64_t at=age<0x8000?now-age:now;

@@ -19,7 +19,7 @@ bool kar_qmk_record(uint16_t code,keyrecord_t *record){
         }
     }
     unsigned pos=record->event.key.row*MATRIX_COLS+record->event.key.col;
-    if(record->event.key.row==VIAL_MATRIX_MAGIC)pos=0x10000U+code;
+    if(record->event.key.row==VIAL_MATRIX_MAGIC||record->event.type==COMBO_EVENT)pos=0x10000U+code;
     if(kar_event(&repeat_state,rules,pos,code,record->event.pressed,repeat_emit,NULL))return false;
     if(record->event.pressed&&!ksm_running()){
         if(code>=0x2000&&code<0x5000){if(!record->tap.count)return true;code&=255;}
