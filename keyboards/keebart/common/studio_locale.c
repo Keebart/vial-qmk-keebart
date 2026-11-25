@@ -200,7 +200,9 @@ bool ksl_qmk_record(uint16_t code,keyrecord_t *record){
     if(bypass&&!ksl_supported(code))return !resolved_action || !ksl_extended_event(&runtime,transaction.active,0x10000U+code,code,record->event.pressed,now,effective_mods(NULL),host_keyboard_led_state().caps_lock,&io);
     init();clock_update();runtime.guarded=true;
     unsigned pos=record->event.key.row*MATRIX_COLS+record->event.key.col;
-    if(record->event.key.row==VIAL_MATRIX_MAGIC)pos=0x10000U+code;
+    // Combo output is a synthetic event at matrix (0,0); give it a synthetic
+    // position so a queued replay does not re-resolve it from the layer binding.
+    if(record->event.key.row==VIAL_MATRIX_MAGIC||record->event.type==COMBO_EVENT)pos=0x10000U+code;
     return !ksl_event(&runtime,transaction.active,pos,code,record->event.pressed,now,get_mods(),host_keyboard_led_state().caps_lock,&io);
 }
 static bool persist(const uint8_t *record){return ksm_save_locale(record);}
