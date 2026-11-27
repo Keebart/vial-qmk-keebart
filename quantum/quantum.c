@@ -134,12 +134,19 @@ void do_code16(uint16_t code, void (*f)(uint8_t)) {
 __attribute__((weak)) void register_code16(uint16_t code) {
 #ifdef KEEBART_STUDIO_LOCALES
     if(ksl_qmk_code(code,true))return;
-#endif
+    uint8_t base = QK_MODS_GET_BASIC_KEYCODE(code);
+    if (IS_MODIFIER_KEYCODE(base) || base == KC_NO) {
+        do_code16(code, register_mods);
+    } else {
+        do_code16(code, register_weak_mods);
+    }
+#else
     if (IS_MODIFIER_KEYCODE(code) || code == KC_NO) {
         do_code16(code, register_mods);
     } else {
         do_code16(code, register_weak_mods);
     }
+#endif
     register_code(code);
 }
 
@@ -148,11 +155,20 @@ __attribute__((weak)) void unregister_code16(uint16_t code) {
     if(ksl_qmk_code(code,false))return;
 #endif
     unregister_code(code);
+#ifdef KEEBART_STUDIO_LOCALES
+    uint8_t base = QK_MODS_GET_BASIC_KEYCODE(code);
+    if (IS_MODIFIER_KEYCODE(base) || base == KC_NO) {
+        do_code16(code, unregister_mods);
+    } else {
+        do_code16(code, unregister_weak_mods);
+    }
+#else
     if (IS_MODIFIER_KEYCODE(code) || code == KC_NO) {
         do_code16(code, unregister_mods);
     } else {
         do_code16(code, unregister_weak_mods);
     }
+#endif
 }
 
 /** \brief Tap a keycode with a delay.

@@ -44,6 +44,7 @@ void kdg_qmk_handle(uint8_t[32],bool);
 #ifdef KEEBART_STUDIO_TEST_ENABLE
 #include "studio_test.h"
 void ksr_led_test_handle(uint8_t[32],bool);
+void ksr_live_state_handle(uint8_t[32]);
 #endif
 #include "wear_leveling_rp2040_flash_config.h"
 #include <string.h>
@@ -305,6 +306,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 #endif
 #ifdef KEEBART_STUDIO_TEST_ENABLE
     if (data[4] == 0xe3) {ksr_led_test_handle(data,false);return;}
+    if (data[4] == 0xe4) {ksr_live_state_handle(data);return;}
 #endif
     if (data[4] == 0xf0) {release_reply(data,false);return;}
     // This narrowly namespaced handler changes only LED palettes/mode.

@@ -302,7 +302,12 @@ void update_source_layers_cache(keypos_t key, uint8_t layer) {
  * reads the cached keys stored when the layer was changed
  */
 uint8_t read_source_layers_cache(keypos_t key) {
-#ifdef VIAL_ENABLE
+#ifdef KEEBART_STUDIO_LOCALES
+    if (key.row == VIAL_MATRIX_MAGIC) {
+        extern uint8_t ksl_qmk_override_layer(void);
+        return ksl_qmk_override_layer();
+    }
+#elif defined(VIAL_ENABLE)
     if (key.row == VIAL_MATRIX_MAGIC) return 0;
 #endif
 

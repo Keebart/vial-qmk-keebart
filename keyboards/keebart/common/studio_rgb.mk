@@ -7,7 +7,7 @@ ifeq ($(strip $(KEEBART_STUDIO_RGB_ENABLE)),yes)
         NKRO_ENABLE = yes
         OPT_DEFS += -DKEEBART_STUDIO_PHYSICAL
         SRC += keyboards/keebart/common/physical/physical.c keyboards/keebart/common/physical/compact.c keyboards/keebart/common/studio_physical.c
-        SRC += keyboards/keebart/common/studio_diagnostics.c keyboards/keebart/common/studio_led_test.c
+        SRC += keyboards/keebart/common/studio_diagnostics.c keyboards/keebart/common/studio_led_test.c keyboards/keebart/common/studio_live_state.c
         SRC += keyboards/keebart/common/studio_rgb_color.c
         LDFLAGS += -Wl,--wrap=chSysHalt
         LDFLAGS += -Wl,--wrap=transport_master_if_connected

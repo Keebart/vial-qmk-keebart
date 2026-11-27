@@ -55,6 +55,9 @@ static uint32_t previous;
 static int64_t now;
 static unsigned bypass;
 static unsigned resolved_action;
+static uint8_t record_layer;
+static unsigned override_bypass;
+uint8_t ksl_qmk_override_layer(void){return resolved_action?runtime.active_layer:record_layer;}
 static void replay(void *ctx,unsigned pos,uint16_t code,bool down,int64_t time){
     (void)ctx;(void)pos;(void)time;
     // Re-enter the normal action pipeline so overrides/repeat see the resolved
@@ -95,9 +98,23 @@ static uint16_t lookup(void *ctx,unsigned pos,uint16_t code){
     unsigned mapped=runtime.extended.swap?kse_swap_position(transaction.active,pos):pos;
     for(int layer=DYNAMIC_KEYMAP_LAYER_COUNT-1;layer>=0;layer--)if((layer_state|default_layer_state)&((layer_state_t)1<<layer)){
         uint16_t binding=ksl_binding(transaction.active,runtime.active,dynamic_keymap_get_keycode(layer,mapped/MATRIX_COLS,mapped%MATRIX_COLS));
-        if(binding!=1)return binding;
+        if(binding!=1){record_layer=layer;return binding;}
     }
     return 0;
+}
+static uint8_t qmk_layer(void *ctx,unsigned pos){(void)ctx;(void)pos;return record_layer;}
+static bool qmk_override(void *ctx,uint16_t code,uint8_t layer,bool down){
+    (void)ctx;
+#ifdef KEY_OVERRIDE_ENABLE
+    if(override_bypass)return true;
+    uint8_t prior=runtime.active_layer;runtime.active_layer=layer;resolved_action++;
+    keyrecord_t rec={.event={.type=KEY_EVENT,.key={.row=VIAL_MATRIX_MAGIC,.col=VIAL_MATRIX_MAGIC},.pressed=down,.time=timer_read()|1}};
+    bool pass=process_key_override(code,&rec);
+    resolved_action--;runtime.active_layer=prior;
+    return pass;
+#else
+    (void)code;(void)layer;(void)down;return true;
+#endif
 }
 static void sequence(void *ctx,uint8_t key,uint8_t mods,bool end){
     (void)ctx;static bool active;static uint8_t saved,weak,oneshot,suppressed,override;
@@ -125,7 +142,7 @@ static bool typing_character(void *,uint16_t,bool,bool);
 static void typing_cancel(void *);
 static const struct ksl_io io;
 static void unicode_character(void *ctx,uint32_t c){(void)ctx;ksl_emit_unicode(&runtime,transaction.active,c,now,&io);}
-static const struct ksl_io io={.unicode=unicode_character,.tap=tap,.sequence=sequence,.character=typing_character,.cancel_typing=typing_cancel,.action=action,.mods=effective_mods,.locks=host_locks,.wait=pause_tap,.replay=replay,.hand=hand,.stroke=stroke,.lookup=lookup};
+static const struct ksl_io io={.unicode=unicode_character,.tap=tap,.sequence=sequence,.character=typing_character,.cancel_typing=typing_cancel,.action=action,.mods=effective_mods,.locks=host_locks,.wait=pause_tap,.replay=replay,.hand=hand,.stroke=stroke,.lookup=lookup,.layer=qmk_layer,.override=qmk_override};
 #include "locales/repeat_port.inc"
 static void init(void){rollover_init();if(initialized)return;const uint8_t *saved=ksm_locale_record();ksl_transaction_init(&transaction,saved);if(!saved){if(!ksh_compact_locale(KSR_LAYOUT_ID,ksh_flags(),transaction.active))ksl_stock(transaction.active);}uint32_t saved_power[2]={eeconfig_read_kb(),eeconfig_read_user()};kspw_init(&power_state,transaction.active,(const uint8_t *)saved_power,ksm_locale_generation());ksl_runtime_init(&runtime,transaction.active);initialized=true;}
 uint16_t ksl_qmk_tap_delay(uint16_t code){init();code=ksl_binding(transaction.active,runtime.active,code);const uint8_t *t=ksl_typing(transaction.active);return ksl_typing_size(transaction.active)==32&&(t[14]&2)?ksl_tap_delay(transaction.active,code):(code==57?80:0);}
@@ -148,6 +165,7 @@ uint16_t ksl_qmk_binding(uint16_t code,uint8_t layer,uint8_t row,uint8_t col){
     if(matrix_is_on(row,col)){pressed_bindings[layer][row][col]=resolved;cached_bindings[layer][row]|=bit;}
     return resolved;
 }
+unsigned ksl_qmk_display_computer(void) { init(); return runtime.active; }
 #ifdef OLED_ENABLE
 // Read-only labels for the physical OLED; never emit a character or alter selection.
 uint16_t ksl_qmk_display_code(uint16_t code) {
@@ -160,7 +178,6 @@ uint16_t ksl_qmk_display_code(uint16_t code) {
     return code;
 }
 bool ksl_qmk_display_replay(void) { return bypass != 0; }
-unsigned ksl_qmk_display_computer(void) { init(); return runtime.active; }
 void ksl_qmk_key_label(uint16_t code,unsigned computer,char *out,size_t size) {
     init();
     code=ksl_binding(transaction.active,computer,code);
@@ -179,8 +196,14 @@ bool ksl_qmk_text(void *ctx,uint32_t c){(void)ctx;init();clock_update();return k
 bool ksl_qmk_code(uint16_t code,bool down){
     if(!ksl_supported(code))return false;
     init();clock_update();
-    if(!down)for(unsigned i=0;i<KSL_HELD;i++)if(runtime.held[i].used&&runtime.held[i].code==code)ksl_event(&runtime,transaction.active,runtime.held[i].position,code,false,now,effective_mods(NULL),host_keyboard_led_state().caps_lock,&io);
-    ksl_event(&runtime,transaction.active,0x10000U+code,code,down,now,get_mods(),host_keyboard_led_state().caps_lock,&io);return true;
+    override_bypass++;
+    if(!down)for(unsigned i=0;i<KSL_HELD;i++)if(runtime.held[i].used&&runtime.held[i].code==code&&runtime.held[i].position<0x20000U){
+        runtime.held[i].due=INT64_MAX;
+        if(ksl_character(code)&&io.character)io.character(io.context,code,false,false);
+    }
+    ksl_event(&runtime,transaction.active,0x20000U+code,code,down,now,effective_mods(NULL),host_keyboard_led_state().caps_lock,&io);
+    override_bypass--;
+    return true;
 }
 static bool power_key(uint16_t code,bool down){
     if(kspw_key(code)){
@@ -197,6 +220,8 @@ static bool power_key(uint16_t code,bool down){
 bool ksl_qmk_record(uint16_t code,keyrecord_t *record){
     init();if(rgb_action(code,record->event.pressed))return false;
     if(power_key(code,record->event.pressed))return false;
+    if(record->event.type==COMBO_EVENT)record_layer=get_highest_layer(layer_state|default_layer_state);
+    else if(record->event.key.row!=VIAL_MATRIX_MAGIC)record_layer=read_source_layers_cache(record->event.key);
     if(bypass&&!ksl_supported(code))return !resolved_action || !ksl_extended_event(&runtime,transaction.active,0x10000U+code,code,record->event.pressed,now,effective_mods(NULL),host_keyboard_led_state().caps_lock,&io);
     init();clock_update();runtime.guarded=true;
     unsigned pos=record->event.key.row*MATRIX_COLS+record->event.key.col;
